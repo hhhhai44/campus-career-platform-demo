@@ -2,7 +2,7 @@ package org.hhhhai.campuscareerplatformdemo.interceptor;
 
 
 
-import static org.hhhhai.campuscareerplatformdemo.constant.RedisConstants.LOGIN_USER_KEY;
+import static org.hhhhai.campuscareerplatformdemo.common.constant.RedisConstants.LOGIN_USER_KEY;
 
 import cn.hutool.core.util.StrUtil;
 import io.jsonwebtoken.ExpiredJwtException;

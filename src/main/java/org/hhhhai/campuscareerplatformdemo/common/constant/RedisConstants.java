@@ -1,4 +1,4 @@
-package org.hhhhai.campuscareerplatformdemo.constant;
+package org.hhhhai.campuscareerplatformdemo.common.constant;
 
 public class RedisConstants {
 

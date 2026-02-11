@@ -1,7 +1,7 @@
 package org.hhhhai.campuscareerplatformdemo.security.token;
 
 
-import static org.hhhhai.campuscareerplatformdemo.constant.RedisConstants.LOGIN_USER_KEY;
+import static org.hhhhai.campuscareerplatformdemo.common.constant.RedisConstants.LOGIN_USER_KEY;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 import org.hhhhai.campuscareerplatformdemo.common.context.UserContext;
 import org.hhhhai.campuscareerplatformdemo.config.JwtProperties;
-import org.hhhhai.campuscareerplatformdemo.entity.user.User;
+import org.hhhhai.campuscareerplatformdemo.entity.user.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -41,7 +41,7 @@ public class JwtTokenService implements TokenService {
    * @param user
    * @return
    */
-  public String generateToken(User user) {
+  public String generateToken(UserEntity user) {
     String jti = UUID.randomUUID().toString();
 
     Date now = new Date();
@@ -51,7 +51,7 @@ public class JwtTokenService implements TokenService {
         .setId(jti)
         .setSubject(String.valueOf(user.getId()))
         .claim("username", user.getUsername())
-        .claim("role", user.getRole() != null ? user.getRole().name() : null)
+        .claim("role", user.getRole() != null ? user.getRole() : null)
         .claim("schoolId", user.getSchoolId())
         .setIssuedAt(now)
         .setExpiration(expire)

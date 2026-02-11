@@ -1,4 +1,4 @@
-package org.hhhhai.campuscareerplatformdemo.utils;
+package org.hhhhai.campuscareerplatformdemo.common.utils;
 
 
 import cn.hutool.core.util.RandomUtil;
