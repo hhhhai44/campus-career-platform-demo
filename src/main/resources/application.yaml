@@ -5,7 +5,7 @@ spring:
   profiles:
     active: dev
   application:
-    name: campus-career-platform
+    name: campus-career-platform-demo
   datasource:
     driver-class-name: ${ccpd.datasource.driver-class-name}
     url: jdbc:mysql://${ccpd.datasource.host}:${ccpd.datasource.port}/${ccpd.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
@@ -37,15 +37,13 @@ spring:
 #        dashboard: localhost:8080 #配置Sentinel dashboard地址
 
 mybatis-plus:
-  type-aliases-package: com.campus.career.infra.persistence.mysql.entity # 别名扫描包
+  type-aliases-package: com.hhhhai.ccpd.entity
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl # 别名扫描包
 
 logging:
   level:
-    com:
-      ato:
-        mapper: debug
-        service: info
-        controller: info
+    com.hhhhai.ccpd.mapper: debug
 
 mybatis:
   #mapper配置文件
