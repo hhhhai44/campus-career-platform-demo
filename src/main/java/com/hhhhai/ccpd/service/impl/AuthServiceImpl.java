@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import jakarta.annotation.Resource;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.dto.LoginDTO;
+import com.hhhhai.ccpd.dto.RegisterDTO;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.UserMapper;
@@ -49,6 +50,41 @@ public class AuthServiceImpl implements AuthService {
 
     // 6. 返回用例结果
     return new LoginVO(token, 3600L);
+  }
+
+  @Override
+  public void register(RegisterDTO request) {
+    // 1. 校验密码一致性
+    if (!request.getPassword().equals(request.getConfirmPassword())) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    // 2. 校验用户名是否已存在
+    UserEntity exists = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
+        .eq(UserEntity::getUsername, request.getUsername()));
+    if (exists != null) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    // 3. 构建用户实体
+    UserEntity user = new UserEntity();
+    user.setUsername(request.getUsername());
+    user.setPassword(passwordEncoder.encode(request.getPassword()));
+    user.setRealName(request.getRealName());
+    user.setStudentNo(request.getStudentNo());
+    user.setEmail(request.getEmail());
+    user.setPhone(request.getPhone());
+    // 默认角色：学生
+    user.setRole(1);
+    // 默认状态：正常
+    user.setStatus(1);
+    user.setLoginFailCount(0);
+
+    // 4. 插入数据库
+    int insert = userMapper.insert(user);
+    if (insert <= 0) {
+      throw new BusinessException(ErrorCode.SYSTEM_ERROR);
+    }
   }
 
 }
