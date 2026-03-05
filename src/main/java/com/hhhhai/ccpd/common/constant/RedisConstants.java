@@ -21,4 +21,19 @@ public class RedisConstants {
   public static final String FEED_KEY = "feed:";
   public static final String SHOP_GEO_KEY = "shop:geo:";
   public static final String USER_SIGN_KEY = "sign:";
+
+  /**
+   * 帖子点赞缓存 key 前缀，完整 key = post:like:{postId}
+   */
+  public static final String POST_LIKE_KEY = "post:like:";
+
+  /**
+   * 用户点赞帖子记录 key 前缀，完整 key = user:like:post:{userId}
+   */
+  public static final String USER_LIKE_POST_KEY = "user:like:post:";
+
+  /**
+   * 热门帖子榜单 key
+   */
+  public static final String HOT_POST_LIST_KEY = "hot:post:list";
 }
