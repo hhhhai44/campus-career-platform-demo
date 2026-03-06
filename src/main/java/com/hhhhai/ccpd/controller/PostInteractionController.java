@@ -3,6 +3,8 @@ package com.hhhhai.ccpd.controller;
 import com.hhhhai.ccpd.common.result.Result;
 import com.hhhhai.ccpd.service.PostFavoriteService;
 import com.hhhhai.ccpd.service.PostLikeService;
+import com.hhhhai.ccpd.vo.forum.FavoriteToggleVO;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,6 +46,15 @@ public class PostInteractionController {
   }
 
   /**
+   * 点赞/取消点赞 Toggle（推荐）：一次接口完成切换，返回当前是否已赞与最新点赞数
+   */
+  @PostMapping("/{postId}/like/toggle")
+  public Result<LikeToggleVO> likeToggle(@PathVariable("postId") Long postId) {
+    LikeToggleVO vo = postLikeService.toggleLike(postId);
+    return Result.success(vo);
+  }
+
+  /**
    * 收藏帖子
    */
   @PostMapping("/{postId}/favorite")
@@ -60,7 +71,20 @@ public class PostInteractionController {
     postFavoriteService.unfavorite(postId);
     return Result.success();
   }
+
+  /**
+   * 收藏/取消收藏 Toggle（推荐）：一次接口完成切换，返回当前是否已收藏
+   */
+  @PostMapping("/{postId}/favorite/toggle")
+  public Result<FavoriteToggleVO> favoriteToggle(@PathVariable("postId") Long postId) {
+    FavoriteToggleVO vo = postFavoriteService.toggleFavorite(postId);
+    return Result.success(vo);
+  }
 }
+
+
+
+
 
 
 

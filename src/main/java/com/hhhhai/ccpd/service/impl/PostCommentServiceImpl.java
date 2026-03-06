@@ -7,6 +7,8 @@ import com.hhhhai.ccpd.common.context.UserContextHolder;
 import com.hhhhai.ccpd.dto.forum.PostCommentCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCommentEntity;
 import com.hhhhai.ccpd.mapper.PostCommentMapper;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.service.NotificationService;
 import com.hhhhai.ccpd.service.PostCommentService;
 import com.hhhhai.ccpd.vo.forum.PostCommentVO;
 import jakarta.annotation.Resource;
@@ -14,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,9 @@ public class PostCommentServiceImpl implements PostCommentService {
 
   @Resource
   private PostCommentMapper postCommentMapper;
+
+  @Resource
+  private NotificationService notificationService;
 
   @Override
   public Long createComment(PostCommentCreateDTO dto) {
@@ -42,7 +46,7 @@ public class PostCommentServiceImpl implements PostCommentService {
     entity.setToUserId(dto.getToUserId());
     entity.setParentId(dto.getParentId());
     entity.setLikeCount(0);
-    entity.setStatus(1);
+    entity.setStatus(ContentStatusEnum.NORMAL);
 
     // 处理 rootId：一级评论 rootId = null，插入后更新为自身ID；二级评论 rootId 使用传入值或父评论的 rootId
     if (dto.getRootId() != null) {
@@ -50,6 +54,9 @@ public class PostCommentServiceImpl implements PostCommentService {
     }
 
     postCommentMapper.insert(entity);
+
+    // 发送评论通知（帖子评论 / 评论回复）
+    notificationService.createPostCommentNotification(entity);
 
     if (entity.getRootId() == null) {
       entity.setRootId(entity.getId());
@@ -65,7 +72,7 @@ public class PostCommentServiceImpl implements PostCommentService {
 
     LambdaQueryWrapper<PostCommentEntity> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(PostCommentEntity::getPostId, postId)
-        .eq(PostCommentEntity::getStatus, 1)
+        .eq(PostCommentEntity::getStatus, ContentStatusEnum.NORMAL)
         .isNull(PostCommentEntity::getParentId)
         .orderByDesc(PostCommentEntity::getCreateTime);
 
@@ -81,7 +88,7 @@ public class PostCommentServiceImpl implements PostCommentService {
     childWrapper.eq(PostCommentEntity::getPostId, postId)
         .in(PostCommentEntity::getRootId, rootIds)
         .isNotNull(PostCommentEntity::getParentId)
-        .eq(PostCommentEntity::getStatus, 1)
+        .eq(PostCommentEntity::getStatus, ContentStatusEnum.NORMAL)
         .orderByAsc(PostCommentEntity::getCreateTime);
     List<PostCommentEntity> children = postCommentMapper.selectList(childWrapper);
 
@@ -119,6 +126,10 @@ public class PostCommentServiceImpl implements PostCommentService {
     return result;
   }
 }
+
+
+
+
 
 
 

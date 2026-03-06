@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
+import com.hhhhai.ccpd.common.enums.UserRoleEnum;
+import com.hhhhai.ccpd.common.enums.UserStatusEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -54,14 +57,14 @@ public class UserEntity implements Serializable {
   private String phone;
 
   /**
-   * 角色：1-学生 2-管理员 3-教师
+   * 角色：学生/管理员/教师
    */
-  private Integer role;
+  private UserRoleEnum role;
 
   /**
-   * 状态：1-正常 0-禁用
+   * 状态：正常/禁用
    */
-  private Integer status;
+  private UserStatusEnum status;
 
   /**
    * 连续登录失败次数
@@ -80,10 +83,10 @@ public class UserEntity implements Serializable {
   private Integer version;
 
   /**
-   * 逻辑删除：0-未删除 1-已删除
+   * 逻辑删除
    */
-  @TableLogic
-  private Integer deleted;
+  @TableLogic(value = "0", delval = "1")
+  private LogicDeleteEnum deleted;
 
   /**
    * 创建时间

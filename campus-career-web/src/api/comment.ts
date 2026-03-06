@@ -1,0 +1,41 @@
+import { getJson, postJson } from '@/api/http'
+
+import type { PageResult } from './post'
+
+export type PostComment = {
+  id: number
+  postId: number
+  rootId: number | null
+  parentId: number | null
+  fromUserId: number
+  fromUserName: string
+  toUserId: number | null
+  toUserName: string | null
+  content: string
+  likeCount: number
+  createTime: string
+  children?: PostComment[]
+}
+
+export type CreateCommentReq = {
+  postId: number
+  content: string
+  rootId?: number | null
+  parentId?: number | null
+  toUserId?: number | null
+}
+
+export const commentApi = {
+  // POST /forum/post/comment
+  create(req: CreateCommentReq) {
+    return postJson<number, CreateCommentReq>('/forum/post/comment', req)
+  },
+
+  // GET /forum/post/comment/{postId}/page
+  page(postId: number, page: number, size: number) {
+    return getJson<PageResult<PostComment>>(`/forum/post/comment/${postId}/page`, {
+      params: { page, size },
+    })
+  },
+}
+

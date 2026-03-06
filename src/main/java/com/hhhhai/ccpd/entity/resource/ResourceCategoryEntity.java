@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.hhhhai.ccpd.common.enums.CategoryStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -42,8 +44,13 @@ public class ResourceCategoryEntity implements Serializable {
    */
   private Integer sort;
 
-  @TableLogic
-  private Integer deleted;
+  /**
+   * 状态：0-禁用 1-启用，只返回启用的分类
+   */
+  private CategoryStatusEnum status;
+
+  @TableLogic(value = "0", delval = "1")
+  private LogicDeleteEnum deleted;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
@@ -51,6 +58,10 @@ public class ResourceCategoryEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updateTime;
 }
+
+
+
+
 
 
 

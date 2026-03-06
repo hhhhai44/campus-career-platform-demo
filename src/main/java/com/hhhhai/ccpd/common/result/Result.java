@@ -4,36 +4,39 @@ import lombok.Data;
 
 @Data
 public class Result<T> {
-    private Integer code;
+  private Integer code;
+  private String message;  // 统一用 message
+  private T data;
 
-    private String errorMsg;
+  // 成功 - 无数据
+  public static <T> Result<T> success() {
+    return success(null);
+  }
 
-    private T data;
+  // 成功 - 有数据
+  public static <T> Result<T> success(T data) {
+    return success("success", data);
+  }
 
-    public static Result<Void> success() {
-        Result<Void> result = new Result<>();
-        result.code = 1;
-        return result;
-    }
+  // 成功 - 自定义消息
+  public static <T> Result<T> success(String message, T data) {
+    Result<T> result = new Result<>();
+    result.setCode(1);
+    result.setMessage(message);
+    result.setData(data);
+    return result;
+  }
 
-    public static <T> Result<T> success(T data) {
-        Result<T> result = new Result<>();
-        result.code = 1;
-        result.data = data;
-        return result;
-    }
+  // 失败 - 默认错误码
+  public static <T> Result<T> error(String message) {
+    return error(0, message);
+  }
 
-    public static Result<Void> error(String msg){
-        Result<Void> result = new Result<>();
-        result.code = 0;
-        result.errorMsg = msg;
-        return result;
-    }
-
-    public static Result<Void> error(Integer code, String msg){
-      Result<Void> result = new Result<>();
-      result.code = code;
-      result.errorMsg = msg;
-      return result;
-    }
+  // 失败 - 自定义错误码
+  public static <T> Result<T> error(Integer code, String message) {
+    Result<T> result = new Result<>();
+    result.setCode(code);
+    result.setMessage(message);
+    return result;
+  }
 }

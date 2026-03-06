@@ -6,11 +6,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
+import com.hhhhai.ccpd.common.enums.PostCategoryEnum;
 import com.hhhhai.ccpd.dto.forum.PostCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCategoryEntity;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
+import com.hhhhai.ccpd.entity.forum.PostFavoriteEntity;
+import com.hhhhai.ccpd.entity.forum.PostLikeEntity;
 import com.hhhhai.ccpd.mapper.PostCategoryMapper;
 import com.hhhhai.ccpd.mapper.PostMapper;
+import com.hhhhai.ccpd.mapper.PostFavoriteMapper;
+import com.hhhhai.ccpd.mapper.PostLikeMapper;
 import com.hhhhai.ccpd.service.PostService;
 import com.hhhhai.ccpd.vo.forum.PostDetailVO;
 import com.hhhhai.ccpd.vo.forum.PostListItemVO;
@@ -38,6 +45,12 @@ public class PostServiceImpl implements PostService {
   @Resource
   private StringRedisTemplate stringRedisTemplate;
 
+  @Resource
+  private PostFavoriteMapper postFavoriteMapper;
+
+  @Resource
+  private PostLikeMapper postLikeMapper;
+
   @Override
   public Long createPost(PostCreateDTO dto) {
     UserContext user = UserContextHolder.getUser();
@@ -54,7 +67,7 @@ public class PostServiceImpl implements PostService {
     entity.setViewCount(0);
     entity.setCommentCount(0);
     entity.setIsTop(0);
-    entity.setStatus(1);
+    entity.setStatus(ContentStatusEnum.NORMAL);
 
     postMapper.insert(entity);
     return entity.getId();
@@ -65,8 +78,8 @@ public class PostServiceImpl implements PostService {
     Page<PostEntity> pageParam = new Page<>(page, size);
 
     LambdaQueryWrapper<PostEntity> wrapper = new LambdaQueryWrapper<>();
-    wrapper.eq(PostEntity::getStatus, 1);
-    wrapper.eq(PostEntity::getDeleted, 0);
+    wrapper.eq(PostEntity::getStatus, ContentStatusEnum.NORMAL);
+    wrapper.eq(PostEntity::getDeleted, LogicDeleteEnum.NOT_DELETED);
     if (StringUtils.hasText(keyword)) {
       wrapper.like(PostEntity::getTitle, keyword);
     }
@@ -97,7 +110,13 @@ public class PostServiceImpl implements PostService {
                 entity -> {
                   PostListItemVO vo = new PostListItemVO();
                   BeanUtils.copyProperties(entity, vo);
-                  vo.setCategoryName(categoryNameMap.get(entity.getCategoryId()));
+                  String categoryName = categoryNameMap.get(entity.getCategoryId());
+                  if (categoryName == null && entity.getCategoryId() != null) {
+                    categoryName = PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
+                  }
+                  vo.setCategoryName(categoryName);
+                  vo.setSummary(buildSummary(entity.getContent(), 96));
+                  vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
                   // TODO: 这里可以补充作者昵称（需要用户资料模块）
                   vo.setAuthorName(null);
                   vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
@@ -113,7 +132,7 @@ public class PostServiceImpl implements PostService {
   @Override
   public PostDetailVO getPostDetail(Long postId) {
     PostEntity entity = postMapper.selectById(postId);
-    if (entity == null || entity.getDeleted() != null && entity.getDeleted() == 1) {
+    if (entity == null || entity.getDeleted() == LogicDeleteEnum.DELETED) {
       return null;
     }
 
@@ -124,14 +143,34 @@ public class PostServiceImpl implements PostService {
     PostDetailVO vo = new PostDetailVO();
     BeanUtils.copyProperties(entity, vo);
 
-    // 分类名称
+    // 分类名称：优先 DB，缺失时用枚举兜底
     PostCategoryEntity category = postCategoryMapper.selectById(entity.getCategoryId());
     if (category != null) {
       vo.setCategoryName(category.getName());
+    } else if (entity.getCategoryId() != null) {
+      vo.setCategoryName(PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue()));
     }
 
     // 点赞数从Redis获取
     vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
+
+    // 默认 false，避免序列化缺失时前端首屏状态错误
+    vo.setLiked(false);
+    vo.setFavorited(false);
+
+    UserContext user = UserContextHolder.getUser();
+    if (user != null && user.getUserId() != null) {
+      Long userId = user.getUserId();
+
+      LambdaQueryWrapper<PostLikeEntity> likeWrapper = new LambdaQueryWrapper<>();
+      likeWrapper.eq(PostLikeEntity::getPostId, postId).eq(PostLikeEntity::getUserId, userId);
+      vo.setLiked(postLikeMapper.selectCount(likeWrapper) > 0);
+
+      LambdaQueryWrapper<PostFavoriteEntity> favoriteWrapper = new LambdaQueryWrapper<>();
+      favoriteWrapper.eq(PostFavoriteEntity::getPostId, postId)
+          .eq(PostFavoriteEntity::getUserId, userId);
+      vo.setFavorited(postFavoriteMapper.selectCount(favoriteWrapper) > 0);
+    }
 
     // TODO: 这里可以补充作者昵称（需要用户资料模块）
     vo.setAuthorName(null);
@@ -152,6 +191,25 @@ public class PostServiceImpl implements PostService {
     // 初始化一个空的Set时不需要写入成员，仅在有实际点赞行为时由点赞逻辑写入
     return count;
   }
+
+  private Integer getPostFavoriteCount(Long postId) {
+    if (postId == null) {
+      return 0;
+    }
+    LambdaQueryWrapper<PostFavoriteEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(PostFavoriteEntity::getPostId, postId);
+    Long count = postFavoriteMapper.selectCount(wrapper);
+    return count == null ? 0 : count.intValue();
+  }
+
+  private String buildSummary(String content, int maxLen) {
+    if (!StringUtils.hasText(content)) {
+      return null;
+    }
+    String normalized = content.replaceAll("\\s+", " ").trim();
+    if (normalized.length() <= maxLen) {
+      return normalized;
+    }
+    return normalized.substring(0, maxLen) + "...";
+  }
 }
-
-

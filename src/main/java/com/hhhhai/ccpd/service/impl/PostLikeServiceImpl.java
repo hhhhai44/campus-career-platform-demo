@@ -10,9 +10,10 @@ import com.hhhhai.ccpd.entity.forum.PostEntity;
 import com.hhhhai.ccpd.entity.forum.PostLikeEntity;
 import com.hhhhai.ccpd.mapper.PostLikeMapper;
 import com.hhhhai.ccpd.mapper.PostMapper;
+import com.hhhhai.ccpd.service.NotificationService;
 import com.hhhhai.ccpd.service.PostLikeService;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import jakarta.annotation.Resource;
-import java.util.Objects;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,9 @@ public class PostLikeServiceImpl implements PostLikeService {
 
   @Resource
   private StringRedisTemplate stringRedisTemplate;
+
+  @Resource
+  private NotificationService notificationService;
 
   @Override
   public void like(Long postId) {
@@ -67,6 +71,9 @@ public class PostLikeServiceImpl implements PostLikeService {
       post.setLikeCount(count + 1);
       postMapper.updateById(post);
     }
+
+    // 发送帖子点赞通知
+    notificationService.createPostLikeNotification(postId);
   }
 
   @Override
@@ -97,6 +104,27 @@ public class PostLikeServiceImpl implements PostLikeService {
       post.setLikeCount(post.getLikeCount() - 1);
       postMapper.updateById(post);
     }
+  }
+
+  @Override
+  public LikeToggleVO toggleLike(Long postId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new RuntimeException("未登录，无法点赞");
+    }
+    Long userId = user.getUserId();
+    String postLikeKey = POST_LIKE_KEY + postId;
+    Boolean isMember = stringRedisTemplate.opsForSet().isMember(postLikeKey, String.valueOf(userId));
+    boolean liked;
+    if (Boolean.TRUE.equals(isMember)) {
+      unlike(postId);
+      liked = false;
+    } else {
+      like(postId);
+      liked = true;
+    }
+    Long count = stringRedisTemplate.opsForSet().size(postLikeKey);
+    return new LikeToggleVO(liked, count != null ? count : 0L);
   }
 }
 

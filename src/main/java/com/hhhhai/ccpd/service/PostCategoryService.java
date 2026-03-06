@@ -1,6 +1,6 @@
 package com.hhhhai.ccpd.service;
 
-import com.hhhhai.ccpd.entity.forum.PostCategoryEntity;
+import com.hhhhai.ccpd.vo.CategoryListItemVO;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -11,10 +11,14 @@ import org.springframework.stereotype.Service;
 public interface PostCategoryService {
 
   /**
-   * 查询所有分类（按 sort 升序）
+   * 查询所有启用分类（按 sort 升序），优先 Redis 缓存
    */
-  List<PostCategoryEntity> listAll();
+  List<CategoryListItemVO> listEnabled();
 }
+
+
+
+
 
 
 

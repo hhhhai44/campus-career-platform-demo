@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -67,9 +69,9 @@ public class PostEntity implements Serializable {
   private Integer isTop;
 
   /**
-   * 状态：1-正常 0-已屏蔽
+   * 状态：正常/已屏蔽
    */
-  private Integer status;
+  private ContentStatusEnum status;
 
   /**
    * 乐观锁版本号
@@ -78,10 +80,10 @@ public class PostEntity implements Serializable {
   private Integer version;
 
   /**
-   * 逻辑删除：0-未删除 1-已删除
+   * 逻辑删除
    */
-  @TableLogic
-  private Integer deleted;
+  @TableLogic(value = "0", delval = "1")
+  private LogicDeleteEnum deleted;
 
   /**
    * 创建时间
@@ -95,6 +97,10 @@ public class PostEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updateTime;
 }
+
+
+
+
 
 
 

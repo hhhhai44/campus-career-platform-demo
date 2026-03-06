@@ -36,4 +36,24 @@ public class RedisConstants {
    * 热门帖子榜单 key
    */
   public static final String HOT_POST_LIST_KEY = "hot:post:list";
+
+  /**
+   * 用户未读通知数量 key 前缀，完整 key = user:notification:count:{userId}
+   */
+  public static final String USER_NOTIFICATION_UNREAD_COUNT_KEY = "user:notification:count:";
+
+  /**
+   * 论坛分类列表缓存 key：forum:category:list
+   */
+  public static final String FORUM_CATEGORY_LIST_KEY = "forum:category:list";
+
+  /**
+   * 资源分类列表缓存 key：resource:category:list
+   */
+  public static final String RESOURCE_CATEGORY_LIST_KEY = "resource:category:list";
+
+  /**
+   * 分类列表缓存过期时间（分钟）
+   */
+  public static final long CATEGORY_LIST_TTL_MINUTES = 30L;
 }

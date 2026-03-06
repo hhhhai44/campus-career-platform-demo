@@ -13,6 +13,9 @@ public class PostListItemVO {
 
   private String title;
 
+  /** 列表摘要 */
+  private String summary;
+
   private Long categoryId;
 
   private String categoryName;
@@ -23,12 +26,12 @@ public class PostListItemVO {
 
   private Integer likeCount;
 
+  /** 收藏数量 */
+  private Integer favoriteCount;
+
   private Integer viewCount;
 
   private Integer commentCount;
 
   private LocalDateTime createTime;
 }
-
-
-

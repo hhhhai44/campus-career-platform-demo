@@ -13,8 +13,9 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
-import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.config.JwtProperties;
+import com.hhhhai.ccpd.common.context.UserContext;
+import com.hhhhai.ccpd.common.enums.UserRoleEnum;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -51,7 +52,7 @@ public class JwtTokenService implements TokenService {
         .setId(jti)
         .setSubject(String.valueOf(user.getId()))
         .claim("username", user.getUsername())
-        .claim("role", user.getRole() != null ? user.getRole() : null)
+        .claim("role", user.getRole() != null ? user.getRole().getCode() : null)
         //.claim("schoolId", user.getSchoolId())
         .setIssuedAt(now)
         .setExpiration(expire)
@@ -104,12 +105,15 @@ public class JwtTokenService implements TokenService {
         .parseClaimsJws(token)
         .getBody();
 
+    Integer roleCode = claims.get("role", Integer.class);
+    String roleDesc =
+        (roleCode != null && UserRoleEnum.fromCode(roleCode) != null)
+            ? UserRoleEnum.fromCode(roleCode).getDescription()
+            : null;
     return new UserContext(
         Long.valueOf(claims.getSubject()),
         claims.get("username", String.class),
-        claims.get("role", String.class)
-        //claims.get("schoolId", Long.class)
-    );
+        roleDesc);
   }
 
   /**
@@ -143,11 +147,14 @@ public class JwtTokenService implements TokenService {
       throw new RuntimeException("登录已失效");
     }
 
+    Integer roleCode = claims.get("role", Integer.class);
+    String roleDesc =
+        (roleCode != null && UserRoleEnum.fromCode(roleCode) != null)
+            ? UserRoleEnum.fromCode(roleCode).getDescription()
+            : null;
     return new UserContext(
         Long.valueOf(claims.getSubject()),
         claims.get("username", String.class),
-        claims.get("role", String.class)
-       // claims.get("schoolId", Long.class)
-    );
+        roleDesc);
   }
 }

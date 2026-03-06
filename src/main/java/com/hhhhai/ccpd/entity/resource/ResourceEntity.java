@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -79,15 +81,15 @@ public class ResourceEntity implements Serializable {
   private Integer downloadCount;
 
   /**
-   * 状态：1-正常 0-下架
+   * 状态：正常/下架
    */
-  private Integer status;
+  private ContentStatusEnum status;
 
   /**
-   * 逻辑删除：0-未删除 1-已删除
+   * 逻辑删除
    */
-  @TableLogic
-  private Integer deleted;
+  @TableLogic(value = "0", delval = "1")
+  private LogicDeleteEnum deleted;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
@@ -95,6 +97,10 @@ public class ResourceEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updateTime;
 }
+
+
+
+
 
 
 

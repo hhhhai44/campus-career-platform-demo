@@ -11,27 +11,46 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration//配置类
 public class MvcConfig implements WebMvcConfigurer {
 
-  @Resource
-  private StringRedisTemplate stringRedisTemplate;
 
-  // todo 修改拦截路径
+  @Resource
+  private RefreshTokenInterceptor refreshTokenInterceptor;
+
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
     // token 刷新拦截器
-    registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate))
+    registry.addInterceptor(refreshTokenInterceptor)
         .addPathPatterns(
-            "/**"
+            // 帖子相关：发帖、评论、点赞、收藏
+            "/forum/post",
+            "/forum/post/comment",
+            "/forum/post/*/like",
+            "/forum/post/*/like/toggle",
+            "/forum/post/*/favorite",
+            "/forum/post/*/favorite/toggle",
+            // 资源相关：上传、评分
+            "/resource",
+            "/resource/rating",
+            // 通知相关：当前用户通知
+            "/notification/**"
         ).order(0);
     // 登录拦截器
     registry.addInterceptor(new LoginInterceptor())
+        .addPathPatterns(
+            "/forum/post",
+            "/forum/post/comment",
+            "/forum/post/*/like",
+            "/forum/post/*/like/toggle",
+            "/forum/post/*/favorite",
+            "/forum/post/*/favorite/toggle",
+            "/resource",
+            "/resource/rating",
+            "/notification/**"
+        )
+        // 登录、注册接口不需要拦截
         .excludePathPatterns(
             "/auth/login",
-            "/user/code",
-            "/blog/hot",
-            "/shop/**",
-            "/shop-type/**",
-            "/upload/**",
-            "/voucher/**"
-        ).order(1);
+            "/auth/register"
+        )
+        .order(1);
   }
 }

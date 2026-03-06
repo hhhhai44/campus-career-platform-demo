@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `resource_category` (
   `code` VARCHAR(32) NOT NULL COMMENT '分类编码',
   `description` VARCHAR(255) DEFAULT NULL COMMENT '分类描述',
   `sort` INT DEFAULT 0 COMMENT '排序（越小越靠前）',
+  `status` INT DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
   `deleted` TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
   `create_time` DATETIME NOT NULL COMMENT '创建时间',
   `update_time` DATETIME NOT NULL COMMENT '更新时间',
@@ -86,6 +87,10 @@ CREATE TABLE IF NOT EXISTS `resource_favorite` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_resource_fav_user` (`resource_id`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源收藏记录表';
+
+
+
+
 
 
 

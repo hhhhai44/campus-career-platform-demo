@@ -3,6 +3,8 @@ package com.hhhhai.ccpd.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import jakarta.annotation.Resource;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
+import com.hhhhai.ccpd.common.enums.UserRoleEnum;
+import com.hhhhai.ccpd.common.enums.UserStatusEnum;
 import com.hhhhai.ccpd.dto.LoginDTO;
 import com.hhhhai.ccpd.dto.RegisterDTO;
 import com.hhhhai.ccpd.entity.user.UserEntity;
@@ -12,8 +14,10 @@ import com.hhhhai.ccpd.security.token.TokenService;
 import com.hhhhai.ccpd.service.AuthService;
 import com.hhhhai.ccpd.common.utils.PasswordEncoder;
 import com.hhhhai.ccpd.vo.LoginVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -29,6 +33,7 @@ public class AuthServiceImpl implements AuthService {
   public LoginVO login(LoginDTO request) {
     String username = request.getUsername();
 
+    log.debug("登录请求: {}", request);
     // 2. 查用户
     UserEntity user = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
         .eq(UserEntity::getUsername, username));
@@ -36,16 +41,16 @@ public class AuthServiceImpl implements AuthService {
     if(user == null){
       throw new BusinessException(ErrorCode.USER_NOT_FOUND);
     }
-
-    // 3. 领域规则校验
-    // user.assertCanLogin();
+    log.debug("用户信息: {}", user);
 
     // 4. 校验密码
-    if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+    log.debug("校验密码");
+    if (!passwordEncoder.matches(user.getPassword(), request.getPassword())) {
       throw new BusinessException(ErrorCode.PASSWORD_ERROR);
     }
 
     // 5. 生成 token
+    log.debug("生成 token");
     String token = tokenService.generateToken(user);
 
     // 6. 返回用例结果
@@ -75,9 +80,9 @@ public class AuthServiceImpl implements AuthService {
     user.setEmail(request.getEmail());
     user.setPhone(request.getPhone());
     // 默认角色：学生
-    user.setRole(1);
+    user.setRole(UserRoleEnum.STUDENT);
     // 默认状态：正常
-    user.setStatus(1);
+    user.setStatus(UserStatusEnum.ENABLED);
     user.setLoginFailCount(0);
 
     // 4. 插入数据库

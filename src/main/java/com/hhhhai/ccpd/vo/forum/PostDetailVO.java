@@ -25,9 +25,15 @@ public class PostDetailVO {
 
   private Integer likeCount;
 
+  /** 当前用户是否已点赞（需登录，未登录为 false） */
+  private Boolean liked;
+
   private Integer viewCount;
 
   private Integer commentCount;
+
+  /** 当前用户是否已收藏（需登录，未登录为 false） */
+  private Boolean favorited;
 
   private LocalDateTime createTime;
 }

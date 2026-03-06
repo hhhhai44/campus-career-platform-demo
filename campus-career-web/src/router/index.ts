@@ -8,26 +8,70 @@
  *   同时在 `src/main.ts` 中删除 `app.use(router)`。
  */
 import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import MainLayout from '@/layout/MainLayout.vue'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: () => import('@/views/HomeView.vue'),
+      },
+      {
+        path: 'forum',
+        name: 'forum-list',
+        component: () => import('@/views/forum/PostList.vue'),
+      },
+      {
+        path: 'forum/:id',
+        name: 'forum-detail',
+        component: () => import('@/views/forum/PostDetail.vue'),
+      },
+      {
+        path: 'resource',
+        name: 'resource-list',
+        component: () => import('@/views/resource/ResourceList.vue'),
+      },
+      {
+        path: 'resource/:id',
+        name: 'resource-detail',
+        component: () => import('@/views/resource/ResourceDetail.vue'),
+      },
+      {
+        path: 'upload',
+        name: 'upload',
+        component: () => import('@/views/UploadCenter.vue'),
+      },
+      {
+        path: 'me',
+        name: 'me',
+        component: () => import('@/views/MeCenter.vue'),
+      },
+    ],
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { requiresAuth: false },
+  },
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  // 路由表：当前模板为空。后续按业务添加，例如：
-  // { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') }
-  routes: [
-    {
-      path: '/',
-      name: 'home',
-      component: () => import('@/views/HomeView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: { requiresAuth: false },
-    },
-  ],
+  routes,
 })
 
 router.beforeEach((to) => {
@@ -35,7 +79,7 @@ router.beforeEach((to) => {
   if (to.meta?.requiresAuth && !auth.isAuthed) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if (to.name === 'login' && auth.isAuthed) {
+  if ((to.name === 'login' || to.name === 'register') && auth.isAuthed) {
     return { name: 'home' }
   }
   return true

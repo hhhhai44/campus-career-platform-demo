@@ -14,3 +14,7 @@ public interface ResourceRatingMapper extends BaseMapper<ResourceRatingEntity> {
 
 
 
+
+
+
+

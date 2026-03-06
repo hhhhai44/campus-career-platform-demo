@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -54,13 +55,17 @@ public class PostCommentEntity implements Serializable {
   private Integer likeCount;
 
   /**
-   * 状态：1-正常 0-已删除/屏蔽
+   * 状态：正常/已删除/屏蔽
    */
-  private Integer status;
+  private ContentStatusEnum status;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }
+
+
+
+
 
 
 

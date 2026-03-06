@@ -1,5 +1,6 @@
 package com.hhhhai.ccpd.service;
 
+import com.hhhhai.ccpd.vo.forum.FavoriteToggleVO;
 import org.springframework.stereotype.Service;
 
 /**
@@ -17,7 +18,16 @@ public interface PostFavoriteService {
    * 取消收藏（如果未收藏则忽略）
    */
   void unfavorite(Long postId);
+
+  /**
+   * 收藏/取消收藏 Toggle：已收藏则取消，未收藏则收藏。返回当前状态。
+   */
+  FavoriteToggleVO toggleFavorite(Long postId);
 }
+
+
+
+
 
 
 

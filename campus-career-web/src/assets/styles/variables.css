@@ -1,0 +1,36 @@
+/**
+ * 全站设计变量，与 MainLayout / 首页 风格一致
+ */
+:root {
+  /* 背景 */
+  --ccp-page-bg: radial-gradient(
+    circle at top left,
+    #eef2ff 0,
+    #f3f4ff 20%,
+    #f5f7fb 50%,
+    #f3f4ff 100%
+  );
+  --ccp-card-bg: #ffffff;
+  --ccp-card-border: rgba(226, 232, 240, 0.8);
+  --ccp-card-radius: 18px;
+  --ccp-card-shadow: 0 18px 45px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(148, 163, 184, 0.12);
+  --ccp-card-shadow-hover: 0 24px 56px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(148, 163, 184, 0.15);
+
+  /* 品牌色 */
+  --ccp-primary: #6366f1;
+  --ccp-primary-light: #818cf8;
+  --ccp-accent: #22c55e;
+  --ccp-brand-gradient: linear-gradient(135deg, #6366f1, #22c55e);
+
+  /* 文字 */
+  --ccp-text: #111827;
+  --ccp-text-secondary: #4b5563;
+  --ccp-text-muted: #6b7280;
+  --ccp-text-light: #9ca3af;
+
+  /* 标题 */
+  --ccp-title-size: 20px;
+  --ccp-title-weight: 800;
+  --ccp-sub-size: 13px;
+  --ccp-sub-color: #6b7280;
+}

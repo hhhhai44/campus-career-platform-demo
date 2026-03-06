@@ -13,13 +13,14 @@
   <router-view />
 </template>
 
-<style scoped>
-/* 给全站一个舒服的默认排版 */
-:global(body) {
+<style>
+/* 全站默认排版，与 variables.css 设计变量一致 */
+body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "PingFang SC",
     "Microsoft YaHei", sans-serif;
-  background: #f6f7fb;
-  color: #111827;
+  background: var(--ccp-page-bg);
+  color: var(--ccp-text);
+  -webkit-font-smoothing: antialiased;
 }
 </style>

@@ -6,16 +6,28 @@
  */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import '@/assets/styles/variables.css'
 
 import App from './App.vue'
 import router from './router'
+import { configureHttp } from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-// 全局状态管理（Pinia）。如果你不使用 Pinia，可删除这行并移除依赖。
-app.use(createPinia())
-// 路由（Vue Router）。如果你不使用路由，可删除这行并移除 `src/router/` 与依赖。
+app.use(pinia)
 app.use(router)
+app.use(ElementPlus)
 
-// 挂载到 DOM：对应 `index.html` 里的 <div id="app"></div>
+// 使用 Pinia 中的 token 配置全局 HTTP 鉴权
+configureHttp({
+  getToken: () => {
+    const auth = useAuthStore()
+    return auth.token
+  },
+})
+
 app.mount('#app')

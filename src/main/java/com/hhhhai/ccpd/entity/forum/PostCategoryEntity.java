@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.hhhhai.ccpd.common.enums.CategoryStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
@@ -31,6 +33,11 @@ public class PostCategoryEntity implements Serializable {
   private String name;
 
   /**
+   * 分类编码，如 KAOYAN/BAOYAN
+   */
+  private String code;
+
+  /**
    * 分类描述
    */
   private String description;
@@ -41,10 +48,15 @@ public class PostCategoryEntity implements Serializable {
   private Integer sort;
 
   /**
-   * 逻辑删除：0-未删除 1-已删除
+   * 状态：0-禁用 1-启用，只返回启用的分类
    */
-  @TableLogic
-  private Integer deleted;
+  private CategoryStatusEnum status;
+
+  /**
+   * 逻辑删除
+   */
+  @TableLogic(value = "0", delval = "1")
+  private LogicDeleteEnum deleted;
 
   /**
    * 创建时间
@@ -58,6 +70,10 @@ public class PostCategoryEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updateTime;
 }
+
+
+
+
 
 
 

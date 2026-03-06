@@ -16,12 +16,14 @@ import com.hhhhai.ccpd.common.context.UserContextHolder;
 import com.hhhhai.ccpd.common.config.JwtProperties;
 import com.hhhhai.ccpd.security.token.JwtTokenService;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * token刷新拦截器
  */
 @Slf4j
+@Component
 public class RefreshTokenInterceptor implements HandlerInterceptor {
 
   private final StringRedisTemplate stringRedisTemplate;
@@ -41,7 +43,11 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
       throws Exception {
     log.info("token 刷新拦截器执行了");
     // 1.获取请求头中的token
-    String token = request.getHeader("authorization");
+    String token = request.getHeader("Authorization");
+
+    if (StrUtil.isNotBlank(token) && token.startsWith("Bearer ")) {
+      token = token.substring(7);
+    }
     if (StrUtil.isBlank(token)) {
       return true;
     }

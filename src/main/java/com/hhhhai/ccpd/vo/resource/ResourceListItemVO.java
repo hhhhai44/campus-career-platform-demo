@@ -28,10 +28,10 @@ public class ResourceListItemVO {
 
   private Integer scoreCount;
 
+  /** 收藏数量 */
+  private Integer favoriteCount;
+
   private Integer downloadCount;
 
   private LocalDateTime createTime;
 }
-
-
-

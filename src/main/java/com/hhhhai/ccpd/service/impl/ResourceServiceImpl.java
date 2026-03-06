@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
+import com.hhhhai.ccpd.common.enums.ResourceCategoryEnum;
 import com.hhhhai.ccpd.dto.resource.ResourceUploadDTO;
 import com.hhhhai.ccpd.entity.resource.ResourceCategoryEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
@@ -52,8 +55,8 @@ public class ResourceServiceImpl implements ResourceService {
     entity.setLikeCount(0);
     entity.setFavoriteCount(0);
     entity.setDownloadCount(0);
-    entity.setStatus(1);
-    entity.setDeleted(0);
+    entity.setStatus(ContentStatusEnum.NORMAL);
+    entity.setDeleted(LogicDeleteEnum.NOT_DELETED);
 
     resourceMapper.insert(entity);
     return entity.getId();
@@ -64,8 +67,8 @@ public class ResourceServiceImpl implements ResourceService {
     Page<ResourceEntity> pageParam = new Page<>(page, size);
 
     LambdaQueryWrapper<ResourceEntity> wrapper = new LambdaQueryWrapper<>();
-    wrapper.eq(ResourceEntity::getStatus, 1)
-        .eq(ResourceEntity::getDeleted, 0);
+    wrapper.eq(ResourceEntity::getStatus, ContentStatusEnum.NORMAL)
+        .eq(ResourceEntity::getDeleted, LogicDeleteEnum.NOT_DELETED);
     if (StringUtils.hasText(keyword)) {
       wrapper.and(
           w ->
@@ -96,7 +99,11 @@ public class ResourceServiceImpl implements ResourceService {
                 entity -> {
                   ResourceListItemVO vo = new ResourceListItemVO();
                   BeanUtils.copyProperties(entity, vo);
-                  vo.setCategoryName(categoryNameMap.get(entity.getCategoryId()));
+                  String categoryName = categoryNameMap.get(entity.getCategoryId());
+                  if (categoryName == null && entity.getCategoryId() != null) {
+                    categoryName = ResourceCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
+                  }
+                  vo.setCategoryName(categoryName);
                   vo.setUploaderName(null);
                   return vo;
                 })
@@ -110,7 +117,7 @@ public class ResourceServiceImpl implements ResourceService {
   @Override
   public ResourceDetailVO getDetail(Long resourceId) {
     ResourceEntity entity = resourceMapper.selectById(resourceId);
-    if (entity == null || entity.getDeleted() != null && entity.getDeleted() == 1) {
+    if (entity == null || entity.getDeleted() == LogicDeleteEnum.DELETED) {
       return null;
     }
 
@@ -120,11 +127,17 @@ public class ResourceServiceImpl implements ResourceService {
     ResourceCategoryEntity category = resourceCategoryMapper.selectById(entity.getCategoryId());
     if (category != null) {
       vo.setCategoryName(category.getName());
+    } else if (entity.getCategoryId() != null) {
+      vo.setCategoryName(ResourceCategoryEnum.getDescByCode(entity.getCategoryId().intValue()));
     }
     vo.setUploaderName(null);
     return vo;
   }
 }
+
+
+
+
 
 
 
