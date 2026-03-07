@@ -2,6 +2,8 @@ package com.hhhhai.ccpd.common.utils;
 
 
 import cn.hutool.core.util.RandomUtil;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
+import com.hhhhai.ccpd.exception.BusinessException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 import org.springframework.util.DigestUtils;
@@ -27,7 +29,7 @@ public class PasswordEncoder {
       return false;
     }
     if (!encodedPassword.contains("@")) {
-      throw new RuntimeException("密码格式不正确！");
+      throw new BusinessException(ErrorCode.PASSWORD_FORMAT_ERROR);
     }
     String[] arr = encodedPassword.split("@");
     // 获取盐

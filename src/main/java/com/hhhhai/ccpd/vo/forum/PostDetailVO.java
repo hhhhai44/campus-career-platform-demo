@@ -35,6 +35,9 @@ public class PostDetailVO {
   /** 当前用户是否已收藏（需登录，未登录为 false） */
   private Boolean favorited;
 
+  /** 当前登录用户ID（未登录为 null） */
+  private Long currentUserId;
+
   private LocalDateTime createTime;
 }
 

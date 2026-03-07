@@ -9,6 +9,7 @@ import com.hhhhai.ccpd.vo.forum.PostListItemVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,6 +59,26 @@ public class PostController {
   public Result<PostDetailVO> detail(@PathVariable("id") Long id) {
     PostDetailVO vo = postService.getPostDetail(id);
     return Result.success(vo);
+  }
+
+  /**
+   * 删除帖子
+   */
+  @DeleteMapping("/{id}")
+  public Result<Void> delete(@PathVariable("id") Long id) {
+    postService.deletePost(id);
+    return Result.success();
+  }
+
+  /**
+   * 查询当前用户发布的帖子列表
+   */
+  @GetMapping("/my")
+  public Result<Page<PostListItemVO>> myPosts(
+      @RequestParam(defaultValue = "1") Long page,
+      @RequestParam(defaultValue = "10") Long size) {
+    Page<PostListItemVO> result = postService.pageMyPosts(page, size);
+    return Result.success(result);
   }
 }
 

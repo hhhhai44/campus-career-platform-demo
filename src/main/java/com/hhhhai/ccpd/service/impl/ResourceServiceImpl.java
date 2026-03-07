@@ -5,11 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
 import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.ResourceCategoryEnum;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.dto.resource.ResourceUploadDTO;
+import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceCategoryEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
+import com.hhhhai.ccpd.mapper.ResourceCommentMapper;
 import com.hhhhai.ccpd.mapper.ResourceCategoryMapper;
 import com.hhhhai.ccpd.mapper.ResourceMapper;
 import com.hhhhai.ccpd.service.ResourceService;
@@ -17,6 +21,7 @@ import com.hhhhai.ccpd.vo.resource.ResourceDetailVO;
 import com.hhhhai.ccpd.vo.resource.ResourceListItemVO;
 import jakarta.annotation.Resource;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,11 +41,14 @@ public class ResourceServiceImpl implements ResourceService {
   @Resource
   private ResourceCategoryMapper resourceCategoryMapper;
 
+  @Resource
+  private ResourceCommentMapper resourceCommentMapper;
+
   @Override
   public Long upload(ResourceUploadDTO dto) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法上传资源");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
 
     ResourceEntity entity = new ResourceEntity();
@@ -87,6 +95,8 @@ public class ResourceServiceImpl implements ResourceService {
       return new Page<>(page, size);
     }
 
+    Map<Long, Long> commentCountMap = loadResourceCommentCountMap(records);
+
     List<Long> categoryIds =
         records.stream().map(ResourceEntity::getCategoryId).distinct().collect(Collectors.toList());
     Map<Long, String> categoryNameMap =
@@ -105,6 +115,7 @@ public class ResourceServiceImpl implements ResourceService {
                   }
                   vo.setCategoryName(categoryName);
                   vo.setUploaderName(null);
+                  vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
                   return vo;
                 })
             .collect(Collectors.toList());
@@ -133,11 +144,17 @@ public class ResourceServiceImpl implements ResourceService {
     vo.setUploaderName(null);
     return vo;
   }
+
+  private Map<Long, Long> loadResourceCommentCountMap(List<ResourceEntity> resources) {
+    List<Long> resourceIds = resources.stream().map(ResourceEntity::getId).collect(Collectors.toList());
+    if (resourceIds.isEmpty()) {
+      return new HashMap<>();
+    }
+    return resourceCommentMapper.selectList(
+            new LambdaQueryWrapper<ResourceCommentEntity>()
+                .in(ResourceCommentEntity::getResourceId, resourceIds)
+                .eq(ResourceCommentEntity::getStatus, ContentStatusEnum.NORMAL))
+        .stream()
+        .collect(Collectors.groupingBy(ResourceCommentEntity::getResourceId, Collectors.counting()));
+  }
 }
-
-
-
-
-
-
-

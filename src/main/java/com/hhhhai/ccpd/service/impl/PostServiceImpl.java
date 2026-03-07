@@ -7,27 +7,35 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
 import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.PostCategoryEnum;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.dto.forum.PostCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCategoryEntity;
+import com.hhhhai.ccpd.entity.forum.PostCommentEntity;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
 import com.hhhhai.ccpd.entity.forum.PostFavoriteEntity;
 import com.hhhhai.ccpd.entity.forum.PostLikeEntity;
 import com.hhhhai.ccpd.mapper.PostCategoryMapper;
 import com.hhhhai.ccpd.mapper.PostMapper;
+import com.hhhhai.ccpd.mapper.PostCommentMapper;
 import com.hhhhai.ccpd.mapper.PostFavoriteMapper;
 import com.hhhhai.ccpd.mapper.PostLikeMapper;
+import com.hhhhai.ccpd.mapper.UserMapper;
+import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.service.PostService;
 import com.hhhhai.ccpd.vo.forum.PostDetailVO;
 import com.hhhhai.ccpd.vo.forum.PostListItemVO;
 import jakarta.annotation.Resource;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
@@ -51,11 +59,17 @@ public class PostServiceImpl implements PostService {
   @Resource
   private PostLikeMapper postLikeMapper;
 
+  @Resource
+  private UserMapper userMapper;
+
+  @Resource
+  private PostCommentMapper postCommentMapper;
+
   @Override
   public Long createPost(PostCreateDTO dto) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法发帖");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
 
     PostEntity entity = new PostEntity();
@@ -96,12 +110,30 @@ public class PostServiceImpl implements PostService {
       return new Page<>(page, size);
     }
 
+    Map<Long, Long> commentCountMap = loadPostCommentCountMap(records);
+
     // 批量查询分类名称
     List<Long> categoryIds =
         records.stream().map(PostEntity::getCategoryId).distinct().collect(Collectors.toList());
     Map<Long, String> categoryNameMap =
         postCategoryMapper.selectBatchIds(categoryIds).stream()
             .collect(Collectors.toMap(PostCategoryEntity::getId, PostCategoryEntity::getName));
+
+    // 批量查询作者信息
+    List<Long> authorIds = records.stream()
+        .map(PostEntity::getAuthorId)
+        .distinct()
+        .collect(Collectors.toList());
+    final Map<Long, String> authorNameMap;
+    if (!authorIds.isEmpty()) {
+      List<UserEntity> authors = userMapper.selectBatchIds(authorIds);
+      authorNameMap = authors.stream()
+          .collect(Collectors.toMap(UserEntity::getId,
+              u -> u.getRealName() != null && !u.getRealName().trim().isEmpty()
+                  ? u.getRealName() : u.getUsername()));
+    } else {
+      authorNameMap = new HashMap<>();
+    }
 
     // 构建VO并填充点赞数量（从Redis获取）
     List<PostListItemVO> voList =
@@ -117,9 +149,9 @@ public class PostServiceImpl implements PostService {
                   vo.setCategoryName(categoryName);
                   vo.setSummary(buildSummary(entity.getContent(), 96));
                   vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
-                  // TODO: 这里可以补充作者昵称（需要用户资料模块）
-                  vo.setAuthorName(null);
+                  vo.setAuthorName(authorNameMap.getOrDefault(entity.getAuthorId(), "未知用户"));
                   vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
+                  vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
                   return vo;
                 })
             .collect(Collectors.toList());
@@ -136,9 +168,9 @@ public class PostServiceImpl implements PostService {
       return null;
     }
 
-    // 累计浏览量（简单处理：数据库字段自增）
-    entity.setViewCount(entity.getViewCount() == null ? 1 : entity.getViewCount() + 1);
-    postMapper.updateById(entity);
+    // 仅自增浏览量，避免 updateById 覆盖其他并发更新字段（如 comment_count）
+    postMapper.incrementViewCount(postId);
+    entity = postMapper.selectById(postId);
 
     PostDetailVO vo = new PostDetailVO();
     BeanUtils.copyProperties(entity, vo);
@@ -172,10 +204,104 @@ public class PostServiceImpl implements PostService {
       vo.setFavorited(postFavoriteMapper.selectCount(favoriteWrapper) > 0);
     }
 
-    // TODO: 这里可以补充作者昵称（需要用户资料模块）
-    vo.setAuthorName(null);
+    // 查询作者信息
+    if (entity.getAuthorId() != null) {
+      UserEntity author = userMapper.selectById(entity.getAuthorId());
+      if (author != null) {
+        vo.setAuthorName(author.getRealName() != null && !author.getRealName().trim().isEmpty()
+            ? author.getRealName() : author.getUsername());
+      } else {
+        vo.setAuthorName("未知用户");
+      }
+    } else {
+      vo.setAuthorName("未知用户");
+    }
+
+    // 设置当前登录用户ID（复用上面已获取的user变量）
+    if (user != null && user.getUserId() != null) {
+      vo.setCurrentUserId(user.getUserId());
+    }
 
     return vo;
+  }
+
+  @Override
+  @Transactional
+  public void deletePost(Long postId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    PostEntity post = postMapper.selectById(postId);
+    if (post == null || post.getDeleted() == LogicDeleteEnum.DELETED) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    // 只能删除自己的帖子
+    if (!post.getAuthorId().equals(user.getUserId())) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    // 逻辑删除帖子
+    post.setDeleted(LogicDeleteEnum.DELETED);
+    postMapper.updateById(post);
+  }
+
+  @Override
+  public Page<PostListItemVO> pageMyPosts(Long page, Long size) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    Page<PostEntity> pageParam = new Page<>(page, size);
+
+    LambdaQueryWrapper<PostEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(PostEntity::getAuthorId, user.getUserId())
+        .eq(PostEntity::getDeleted, LogicDeleteEnum.NOT_DELETED)
+        .orderByDesc(PostEntity::getCreateTime);
+
+    Page<PostEntity> entityPage = postMapper.selectPage(pageParam, wrapper);
+
+    List<PostEntity> records = entityPage.getRecords();
+    if (records.isEmpty()) {
+      return new Page<>(page, size);
+    }
+
+    Map<Long, Long> commentCountMap = loadPostCommentCountMap(records);
+
+    // 批量查询分类名称
+    List<Long> categoryIds =
+        records.stream().map(PostEntity::getCategoryId).distinct().collect(Collectors.toList());
+    Map<Long, String> categoryNameMap =
+        postCategoryMapper.selectBatchIds(categoryIds).stream()
+            .collect(Collectors.toMap(PostCategoryEntity::getId, PostCategoryEntity::getName));
+
+    // 构建VO
+    List<PostListItemVO> voList =
+        records.stream()
+            .map(
+                entity -> {
+                  PostListItemVO vo = new PostListItemVO();
+                  BeanUtils.copyProperties(entity, vo);
+                  String categoryName = categoryNameMap.get(entity.getCategoryId());
+                  if (categoryName == null && entity.getCategoryId() != null) {
+                    categoryName = PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
+                  }
+                  vo.setCategoryName(categoryName);
+                  vo.setSummary(buildSummary(entity.getContent(), 96));
+                  vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
+                  vo.setAuthorName(user.getUsername());
+                  vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
+                  vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
+                  return vo;
+                })
+            .collect(Collectors.toList());
+
+    Page<PostListItemVO> result = new Page<>(page, size, entityPage.getTotal());
+    result.setRecords(voList);
+    return result;
   }
 
   /**
@@ -211,5 +337,18 @@ public class PostServiceImpl implements PostService {
       return normalized;
     }
     return normalized.substring(0, maxLen) + "...";
+  }
+
+  private Map<Long, Long> loadPostCommentCountMap(List<PostEntity> posts) {
+    List<Long> postIds = posts.stream().map(PostEntity::getId).collect(Collectors.toList());
+    if (postIds.isEmpty()) {
+      return new HashMap<>();
+    }
+    return postCommentMapper.selectList(
+            new LambdaQueryWrapper<PostCommentEntity>()
+                .in(PostCommentEntity::getPostId, postIds)
+                .eq(PostCommentEntity::getStatus, ContentStatusEnum.NORMAL))
+        .stream()
+        .collect(Collectors.groupingBy(PostCommentEntity::getPostId, Collectors.counting()));
   }
 }

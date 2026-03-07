@@ -61,14 +61,14 @@ public class AuthServiceImpl implements AuthService {
   public void register(RegisterDTO request) {
     // 1. 校验密码一致性
     if (!request.getPassword().equals(request.getConfirmPassword())) {
-      throw new BusinessException(ErrorCode.PARAM_INVALID);
+      throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
     }
 
     // 2. 校验用户名是否已存在
     UserEntity exists = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
         .eq(UserEntity::getUsername, request.getUsername()));
     if (exists != null) {
-      throw new BusinessException(ErrorCode.PARAM_INVALID);
+      throw new BusinessException(ErrorCode.USER_EXIST);
     }
 
     // 3. 构建用户实体

@@ -1,28 +1,28 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { commentApi, type PostComment } from '@/api/comment'
+import { resourceCommentApi, type ResourceComment } from '@/api/resourceComment'
 
 const props = defineProps<{
-  comments: PostComment[]
-  postId: number
+  comments: ResourceComment[]
+  resourceId: number
 }>()
 
 const emit = defineEmits<{
   refresh: []
-  reply: [comment: PostComment]
+  reply: [comment: ResourceComment]
 }>()
 
 const auth = useAuthStore()
 
-async function handleDelete(comment: PostComment) {
+async function handleDelete(comment: ResourceComment) {
   try {
     await ElMessageBox.confirm('确定要删除这条评论吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
-    await commentApi.delete(comment.id)
+    await resourceCommentApi.delete(comment.id)
     ElMessage.success('删除成功')
     emit('refresh')
   } catch (err: any) {
@@ -32,7 +32,7 @@ async function handleDelete(comment: PostComment) {
   }
 }
 
-function handleReply(comment: PostComment) {
+function handleReply(comment: ResourceComment) {
   emit('reply', comment)
 }
 </script>
@@ -59,28 +59,20 @@ function handleReply(comment: PostComment) {
             {{ item.content }}
           </div>
           <div class="comment-actions">
-            <el-button
-              text
-              type="primary"
-              size="small"
-              @click="handleReply(item)"
-            >
-              回复
-            </el-button>
-            <el-button
-              v-if="auth.isAuthed"
-              text
-              type="danger"
-              size="small"
-              @click="handleDelete(item)"
-            >
+            <el-button text type="primary" size="small" @click="handleReply(item)">回复</el-button>
+            <el-button v-if="auth.isAuthed" text type="danger" size="small" @click="handleDelete(item)">
               删除
             </el-button>
           </div>
         </div>
       </div>
       <div v-if="item.children && item.children.length" class="children">
-        <CommentList :comments="item.children" :post-id="postId" @refresh="emit('refresh')" @reply="emit('reply', $event)" />
+        <ResourceCommentList
+          :comments="item.children"
+          :resource-id="resourceId"
+          @refresh="emit('refresh')"
+          @reply="emit('reply', $event)"
+        />
       </div>
     </div>
   </div>

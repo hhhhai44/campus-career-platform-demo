@@ -31,6 +31,9 @@ public class ResourceListItemVO {
   /** 收藏数量 */
   private Integer favoriteCount;
 
+  /** 评论数量 */
+  private Integer commentCount;
+
   private Integer downloadCount;
 
   private LocalDateTime createTime;

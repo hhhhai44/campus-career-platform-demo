@@ -145,6 +145,7 @@ onMounted(() => {
             <div class="resource-stats">
               <span>⭐ {{ res.scoreAvg?.toFixed?.(1) ?? '-' }} ({{ res.scoreCount }})</span>
               <span>收藏 {{ res.favoriteCount }}</span>
+              <span>💬 {{ res.commentCount }}</span>
               <span>⬇️ {{ res.downloadCount }}</span>
             </div>
           </el-card>

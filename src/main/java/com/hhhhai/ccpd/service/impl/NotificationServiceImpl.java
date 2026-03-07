@@ -7,9 +7,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.NotificationBizTypeEnum;
 import com.hhhhai.ccpd.common.enums.NotificationTypeEnum;
 import com.hhhhai.ccpd.common.enums.ReadStatusEnum;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.entity.forum.PostCommentEntity;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
 import com.hhhhai.ccpd.entity.notification.NotificationEntity;
@@ -150,7 +152,7 @@ public class NotificationServiceImpl implements NotificationService {
       Integer isRead) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法查询通知");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
 
     Page<NotificationEntity> pageParam = new Page<>(page, size);
@@ -217,7 +219,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法操作通知");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
 
     NotificationEntity entity = notificationMapper.selectById(notificationId);
@@ -239,7 +241,7 @@ public class NotificationServiceImpl implements NotificationService {
   public void markAllRead() {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法操作通知");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 
@@ -259,7 +261,7 @@ public class NotificationServiceImpl implements NotificationService {
   public Long getUnreadCount() {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法查询通知");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 

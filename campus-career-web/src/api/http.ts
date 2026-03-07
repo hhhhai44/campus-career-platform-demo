@@ -3,7 +3,7 @@ import axios from 'axios'
 
 export type ApiResult<T> = {
   code: number
-  errorMsg?: string
+  message?: string
   data?: T
 }
 
@@ -58,15 +58,22 @@ function getAxios(): AxiosInstance {
     (response: AxiosResponse<ApiResult<unknown>>) => {
       const { data } = response
       if (!data) throw new ApiError('响应格式错误')
-      if (data.code !== 1) throw new ApiError(data.errorMsg || '请求失败', data.code)
+      if (data.code !== 1) {
+        // 优先使用后端返回的 message，只有网络错误或服务器异常时才显示"请求失败"
+        const errorMessage = data.message || '请求失败'
+        throw new ApiError(errorMessage, data.code)
+      }
       return response
     },
     (error) => {
+      // 网络错误或服务器异常
       if (error.response) {
-        const { status, statusText } = error.response
-        throw new ApiError(`网络错误：${status} ${statusText}`, status)
+        const { status, statusText, data } = error.response
+        // 尝试从响应中获取错误信息
+        const errorMessage = data?.message || `网络错误：${status} ${statusText}`
+        throw new ApiError(errorMessage, status)
       }
-      throw new ApiError(error.message || '网络异常')
+      throw new ApiError(error.message || '网络异常，请稍后重试')
     },
   )
 

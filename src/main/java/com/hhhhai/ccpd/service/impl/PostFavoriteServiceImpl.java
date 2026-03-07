@@ -3,7 +3,9 @@ package com.hhhhai.ccpd.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.entity.forum.PostFavoriteEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.PostFavoriteMapper;
 import com.hhhhai.ccpd.service.NotificationService;
 import com.hhhhai.ccpd.service.PostFavoriteService;
@@ -27,7 +29,7 @@ public class PostFavoriteServiceImpl implements PostFavoriteService {
   public void favorite(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法收藏");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 
@@ -52,7 +54,7 @@ public class PostFavoriteServiceImpl implements PostFavoriteService {
   public void unfavorite(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法取消收藏");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 
@@ -70,7 +72,7 @@ public class PostFavoriteServiceImpl implements PostFavoriteService {
   public FavoriteToggleVO toggleFavorite(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法收藏");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
     LambdaQueryWrapper<PostFavoriteEntity> wrapper = new LambdaQueryWrapper<>();

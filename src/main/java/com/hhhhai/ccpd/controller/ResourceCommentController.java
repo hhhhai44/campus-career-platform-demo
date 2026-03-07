@@ -2,9 +2,9 @@ package com.hhhhai.ccpd.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.result.Result;
-import com.hhhhai.ccpd.dto.forum.PostCommentCreateDTO;
-import com.hhhhai.ccpd.service.PostCommentService;
-import com.hhhhai.ccpd.vo.forum.PostCommentVO;
+import com.hhhhai.ccpd.dto.resource.ResourceCommentCreateDTO;
+import com.hhhhai.ccpd.service.ResourceCommentService;
+import com.hhhhai.ccpd.vo.resource.ResourceCommentVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -18,50 +18,35 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 帖子评论相关接口
+ * 资源评论相关接口
  */
 @RestController
-@RequestMapping("/forum/post/comment")
+@RequestMapping("/resource/comment")
 @AllArgsConstructor
-public class PostCommentController {
+public class ResourceCommentController {
 
   @Resource
-  private PostCommentService postCommentService;
+  private ResourceCommentService resourceCommentService;
 
-  /**
-   * 新增评论 / 回复
-   */
   @PostMapping
-  public Result<Long> create(@Valid @RequestBody PostCommentCreateDTO dto) {
-    Long id = postCommentService.createComment(dto);
+  public Result<Long> create(@Valid @RequestBody ResourceCommentCreateDTO dto) {
+    Long id = resourceCommentService.createComment(dto);
     return Result.success(id);
   }
 
-  /**
-   * 某个帖子的评论列表（分页，一级评论 + 二级评论）
-   */
-  @GetMapping("/{postId}/page")
-  public Result<Page<PostCommentVO>> page(
-      @PathVariable("postId") Long postId,
+  @GetMapping("/{resourceId}/page")
+  public Result<Page<ResourceCommentVO>> page(
+      @PathVariable("resourceId") Long resourceId,
       @RequestParam(defaultValue = "1") Long page,
       @RequestParam(defaultValue = "10") Long size) {
-    Page<PostCommentVO> result = postCommentService.pageComments(postId, page, size);
+    Page<ResourceCommentVO> result = resourceCommentService.pageComments(resourceId, page, size);
     return Result.success(result);
   }
 
-  /**
-   * 删除评论
-   */
   @DeleteMapping("/{id}")
   public Result<Void> delete(@PathVariable("id") Long id) {
-    postCommentService.deleteComment(id);
+    resourceCommentService.deleteComment(id);
     return Result.success();
   }
 }
-
-
-
-
-
-
 

@@ -6,8 +6,10 @@ import static com.hhhhai.ccpd.common.constant.RedisConstants.USER_LIKE_POST_KEY;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
 import com.hhhhai.ccpd.entity.forum.PostLikeEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.PostLikeMapper;
 import com.hhhhai.ccpd.mapper.PostMapper;
 import com.hhhhai.ccpd.service.NotificationService;
@@ -39,7 +41,7 @@ public class PostLikeServiceImpl implements PostLikeService {
   public void like(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法点赞");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 
@@ -80,7 +82,7 @@ public class PostLikeServiceImpl implements PostLikeService {
   public void unlike(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法取消点赞");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
 
@@ -110,7 +112,7 @@ public class PostLikeServiceImpl implements PostLikeService {
   public LikeToggleVO toggleLike(Long postId) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法点赞");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
     String postLikeKey = POST_LIKE_KEY + postId;

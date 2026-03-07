@@ -15,8 +15,10 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.SecretKey;
 import com.hhhhai.ccpd.common.config.JwtProperties;
 import com.hhhhai.ccpd.common.context.UserContext;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.UserRoleEnum;
 import com.hhhhai.ccpd.entity.user.UserEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -144,7 +146,7 @@ public class JwtTokenService implements TokenService {
 
     // Redis 校验登录态
     if (!redisTemplate.hasKey(redisKey)) {
-      throw new RuntimeException("登录已失效");
+      throw new BusinessException(ErrorCode.LOGIN_INVALID);
     }
 
     Integer roleCode = claims.get("role", Integer.class);

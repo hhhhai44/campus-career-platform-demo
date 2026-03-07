@@ -15,6 +15,7 @@ export type ResourceListItem = {
   scoreAvg: number
   scoreCount: number
   favoriteCount: number
+  commentCount: number
   downloadCount: number
   createTime: string
 }

@@ -5,16 +5,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.Data;
 
 /**
- * 资源评分实体
+ * 资源评论实体（支持二级评论）
  */
 @Data
-@TableName("resource_rating")
-public class ResourceRatingEntity implements Serializable {
+@TableName("resource_comment")
+public class ResourceCommentEntity implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
@@ -23,13 +24,21 @@ public class ResourceRatingEntity implements Serializable {
 
   private Long resourceId;
 
-  private Long userId;
+  private Long rootId;
 
-  /**
-   * 评分值 1-5
-   */
-  private Integer score;
+  private Long parentId;
+
+  private Long fromUserId;
+
+  private Long toUserId;
+
+  private String content;
+
+  private Integer likeCount;
+
+  private ContentStatusEnum status;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }
+

@@ -4,10 +4,15 @@ import { useRouter } from 'vue-router'
 import type { PostListItem } from '@/api/post'
 import { interactionApi } from '@/api/interaction'
 
-const props = defineProps<{
-  post: PostListItem
-  clickable?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    post: PostListItem
+    clickable?: boolean
+  }>(),
+  {
+    clickable: true,
+  },
+)
 
 const emit = defineEmits<{
   refresh: []
@@ -65,7 +70,7 @@ async function toggleFavorite(e: MouseEvent) {
 }
 
 function gotoDetail() {
-  if (props.clickable === false) return
+  if (!props.clickable) return
   router.push({ name: 'forum-detail', params: { id: props.post.id } })
 }
 </script>

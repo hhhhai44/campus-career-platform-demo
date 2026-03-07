@@ -24,16 +24,4 @@ public class ResourceRateDTO {
   @Min(value = 1, message = "评分不能小于1")
   @Max(value = 5, message = "评分不能大于5")
   private Integer score;
-
-  /**
-   * 评分评语，可选
-   */
-  private String comment;
 }
-
-
-
-
-
-
-

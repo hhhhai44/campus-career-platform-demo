@@ -1,4 +1,4 @@
-import { getJson, postJson } from '@/api/http'
+import { deleteJson, getJson, postJson } from '@/api/http'
 
 export type PageRequest = {
   page?: number
@@ -48,6 +48,8 @@ export type PostDetail = {
   commentCount: number
   /** 当前用户是否已收藏 */
   favorited?: boolean
+  /** 当前登录用户ID（未登录为 null） */
+  currentUserId?: number | null
   createTime: string
 }
 
@@ -71,5 +73,17 @@ export const postApi = {
   // GET /forum/post/{id}
   detail(id: number) {
     return getJson<PostDetail>(`/forum/post/${id}`)
+  },
+
+  // DELETE /forum/post/{id}
+  delete(id: number) {
+    return deleteJson(`/forum/post/${id}`)
+  },
+
+  // GET /forum/post/my
+  myPosts(page: number, size: number) {
+    return getJson<PageResult<PostListItem>>('/forum/post/my', {
+      params: { page, size },
+    })
   },
 }

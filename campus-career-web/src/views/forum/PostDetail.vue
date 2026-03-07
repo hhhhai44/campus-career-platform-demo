@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, watch, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { postApi, type PostDetail } from '@/api/post'
 import { commentApi, type PostComment } from '@/api/comment'
 import { interactionApi } from '@/api/interaction'
 import CommentList from '@/components/CommentList.vue'
 
 const route = useRoute()
+const auth = useAuthStore()
+
+const isMyPost = computed(() => {
+  if (!post.value || !auth.isAuthed) {
+    return false
+  }
+  return post.value.currentUserId != null 
+    && post.value.authorId === post.value.currentUserId
+})
 
 const post = ref<PostDetail | null>(null)
 const comments = ref<PostComment[]>([])
@@ -17,6 +27,8 @@ const submittingComment = ref(false)
 const commentContent = ref('')
 const likeLoading = ref(false)
 const favoriteLoading = ref(false)
+const replyingTo = ref<PostComment | null>(null)
+const deleteLoading = ref(false)
 
 async function fetchPost(id: number) {
   loadingPost.value = true
@@ -85,13 +97,55 @@ async function submitComment() {
     await commentApi.create({
       postId: post.value.id,
       content: commentContent.value.trim(),
+      rootId: replyingTo.value?.rootId || replyingTo.value?.id || null,
+      parentId: replyingTo.value?.id || null,
+      toUserId: replyingTo.value?.fromUserId || null,
     })
     commentContent.value = ''
-    await fetchComments(post.value.id)
+    replyingTo.value = null
+    await Promise.all([fetchPost(post.value.id), fetchComments(post.value.id)])
   } catch {
     ElMessage.error('评论发表失败，请稍后重试')
   } finally {
     submittingComment.value = false
+  }
+}
+
+function handleReply(comment: PostComment) {
+  replyingTo.value = comment
+  commentContent.value = `@${comment.fromUserName} `
+}
+
+function cancelReply() {
+  replyingTo.value = null
+  commentContent.value = ''
+}
+
+async function handleDeletePost() {
+  if (!post.value) return
+  try {
+    await ElMessageBox.confirm('确定要删除这个帖子吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    deleteLoading.value = true
+    await postApi.delete(post.value.id)
+    ElMessage.success('删除成功')
+    // 返回上一页或首页
+    window.history.back()
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.message || '删除失败')
+    }
+  } finally {
+    deleteLoading.value = false
+  }
+}
+
+async function handleCommentRefresh() {
+  if (post.value) {
+    await Promise.all([fetchPost(post.value.id), fetchComments(post.value.id)])
   }
 }
 
@@ -149,6 +203,16 @@ watch(
             ⭐ {{ post.favorited ? '已收藏' : '收藏' }}
           </el-button>
           <span class="meta-text">浏览 {{ post.viewCount }} · 评论 {{ post.commentCount }}</span>
+          <el-button
+            v-if="isMyPost"
+            text
+            type="danger"
+            size="small"
+            :loading="deleteLoading"
+            @click="handleDeletePost"
+          >
+            删除
+          </el-button>
         </div>
       </el-card>
     </template>
@@ -156,24 +220,37 @@ watch(
     <el-card class="comment-card" shadow="never">
       <div class="comment-title">评论</div>
       <el-form @submit.prevent>
+        <el-form-item v-if="replyingTo">
+          <div class="reply-hint">
+            正在回复 <span class="reply-user">@{{ replyingTo.fromUserName }}</span>
+            <el-button text type="primary" size="small" @click="cancelReply">取消</el-button>
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-input
             v-model="commentContent"
             type="textarea"
             :rows="3"
-            placeholder="写下你的想法..."
+            :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你的想法...'"
           />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submittingComment" @click="submitComment">
-            发表
+            {{ replyingTo ? '回复' : '发表' }}
           </el-button>
+          <el-button v-if="replyingTo" @click="cancelReply">取消</el-button>
         </el-form-item>
       </el-form>
 
       <el-skeleton v-if="loadingComments" animated :rows="5" />
       <template v-else>
-        <CommentList v-if="comments.length" :comments="comments" />
+        <CommentList
+          v-if="comments.length"
+          :comments="comments"
+          :post-id="post?.id || 0"
+          @refresh="handleCommentRefresh"
+          @reply="handleReply"
+        />
         <div v-else class="empty-text">还没有评论，来占个沙发吧～</div>
       </template>
     </el-card>
@@ -250,5 +327,21 @@ watch(
   font-size: var(--ccp-sub-size);
   color: var(--ccp-text-light);
   text-align: center;
+}
+
+.reply-hint {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reply-user {
+  font-weight: 600;
+  color: var(--ccp-primary);
 }
 </style>

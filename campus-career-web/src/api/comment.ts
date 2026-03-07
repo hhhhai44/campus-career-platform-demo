@@ -1,4 +1,4 @@
-import { getJson, postJson } from '@/api/http'
+import { deleteJson, getJson, postJson } from '@/api/http'
 
 import type { PageResult } from './post'
 
@@ -36,6 +36,11 @@ export const commentApi = {
     return getJson<PageResult<PostComment>>(`/forum/post/comment/${postId}/page`, {
       params: { page, size },
     })
+  },
+
+  // DELETE /forum/post/comment/{id}
+  delete(id: number) {
+    return deleteJson(`/forum/post/comment/${id}`)
   },
 }
 

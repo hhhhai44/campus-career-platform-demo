@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { notificationApi, type Notification, type PageResult } from '@/api/notification'
+import { postApi, type PostListItem, type PageResult } from '@/api/post'
 
 const auth = useAuthStore()
+const router = useRouter()
 
-const notifications = ref<Notification[]>([])
+const posts = ref<PostListItem[]>([])
 const loading = ref(false)
 const page = ref(1)
 const size = ref(10)
@@ -15,48 +17,54 @@ const total = ref(0)
 const displayUsername = computed(() => auth.username || '未登录用户')
 const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCase())
 
-async function fetchNotifications() {
+async function fetchMyPosts() {
+  if (!auth.isAuthed) {
+    ElMessage.warning('请先登录')
+    return
+  }
   loading.value = true
   try {
-    const resp: PageResult<Notification> = await notificationApi.page({
-      page: page.value,
-      size: size.value,
-    })
-    notifications.value = resp.records
+    const resp: PageResult<PostListItem> = await postApi.myPosts(page.value, size.value)
+    posts.value = resp.records
     total.value = resp.total
   } catch {
-    notifications.value = []
-    ElMessage.error('通知加载失败，请稍后重试')
+    posts.value = []
+    ElMessage.error('加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
 
-async function markOne(id: number) {
+async function handleDelete(postId: number) {
   try {
-    await notificationApi.markRead(id)
-    await fetchNotifications()
-  } catch {
-    ElMessage.error('标记失败，请稍后重试')
-  }
-}
-
-async function markAll() {
-  try {
-    await notificationApi.markAllRead()
-    await fetchNotifications()
-  } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    await ElMessageBox.confirm('确定要删除这个帖子吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    await postApi.delete(postId)
+    ElMessage.success('删除成功')
+    await fetchMyPosts()
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.message || '删除失败')
+    }
   }
 }
 
 function handlePageChange(p: number) {
   page.value = p
-  fetchNotifications()
+  fetchMyPosts()
+}
+
+function goToDetail(id: number) {
+  router.push(`/forum/post/${id}`)
 }
 
 onMounted(() => {
-  fetchNotifications()
+  if (auth.isAuthed) {
+    fetchMyPosts()
+  }
 })
 </script>
 
@@ -64,7 +72,7 @@ onMounted(() => {
   <div class="me">
     <div class="header">
       <div class="title">我的</div>
-      <div class="sub">查看个人通知与互动动态</div>
+      <div class="sub">查看我发布的帖子</div>
     </div>
 
     <div class="user-card">
@@ -77,43 +85,43 @@ onMounted(() => {
       </div>
     </div>
 
-    <el-card class="notify-card" shadow="never">
-      <div class="notify-header">
-        <div class="notify-title">消息通知</div>
-        <el-button text type="primary" @click="markAll">全部标为已读</el-button>
+    <el-card class="posts-card" shadow="never">
+      <div class="posts-header">
+        <div class="posts-title">我的帖子</div>
       </div>
 
       <el-skeleton v-if="loading" animated :rows="6" />
 
-      <div v-else class="notify-list">
-        <div v-for="item in notifications" :key="item.id" class="notify-item">
-          <div class="notify-main">
-            <div class="notify-title-line">
-              <span class="dot" :class="{ unread: item.isRead === 0 }"></span>
-              <span class="title-text">{{ item.title }}</span>
-            </div>
-            <div class="content">{{ item.content }}</div>
-            <div class="meta">
-              <span>
+      <div v-else class="posts-list">
+        <div v-for="item in posts" :key="item.id" class="post-item">
+          <div class="post-main" @click="goToDetail(item.id)">
+            <div class="post-title">{{ item.title }}</div>
+            <div class="post-summary">{{ item.summary || item.title }}</div>
+            <div class="post-meta">
+              <span class="tag">{{ item.categoryName }}</span>
+              <span class="meta-text">
                 {{ new Date(item.createTime).toLocaleString() }}
               </span>
               <span class="meta-sep">·</span>
-              <span>{{ item.typeName ?? item.typeDesc ?? `类型${item.type}` }} · {{ item.bizTypeName ?? item.bizTypeDesc ?? `业务${item.bizType}` }}</span>
+              <span class="meta-text">浏览 {{ item.viewCount }}</span>
+              <span class="meta-sep">·</span>
+              <span class="meta-text">评论 {{ item.commentCount }}</span>
+              <span class="meta-sep">·</span>
+              <span class="meta-text">点赞 {{ item.likeCount }}</span>
             </div>
           </div>
-          <div class="notify-actions">
+          <div class="post-actions">
             <el-button
-              v-if="item.isRead === 0"
               link
-              type="primary"
+              type="danger"
               size="small"
-              @click="markOne(item.id)"
+              @click.stop="handleDelete(item.id)"
             >
-              标为已读
+              删除
             </el-button>
           </div>
         </div>
-        <div v-if="!notifications.length" class="empty-text">暂无通知</div>
+        <div v-if="!posts.length" class="empty-text">还没有发布过帖子</div>
       </div>
 
       <div v-if="total > size" class="pager">
@@ -183,78 +191,87 @@ onMounted(() => {
   color: var(--ccp-text-light);
 }
 
-.notify-card {
+.posts-card {
   border-radius: var(--ccp-card-radius);
 }
 
-.notify-header {
+.posts-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.notify-title {
+.posts-title {
   font-size: 16px;
   font-weight: 700;
 }
 
-.notify-list {
+.posts-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.notify-item {
+.post-item {
   display: flex;
   gap: 10px;
-  padding: 8px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.notify-main {
+.post-item:hover {
+  background-color: #f9fafb;
+  border-radius: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.post-main {
   flex: 1;
 }
 
-.notify-title-line {
+.post-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.post-summary {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.post-meta {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #d1d5db;
-}
-
-.dot.unread {
-  background: #22c55e;
-}
-
-.title-text {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.content {
-  margin-top: 2px;
-  font-size: 13px;
-  color: #4b5563;
-}
-
-.meta {
-  margin-top: 4px;
   font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--ccp-primary);
+  font-size: 11px;
+}
+
+.meta-text {
   color: #9ca3af;
 }
 
 .meta-sep {
-  margin: 0 4px;
+  color: #d1d5db;
 }
 
-.notify-actions {
+.post-actions {
   display: flex;
   align-items: center;
 }

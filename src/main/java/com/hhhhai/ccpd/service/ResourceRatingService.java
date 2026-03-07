@@ -10,12 +10,10 @@ import org.springframework.stereotype.Service;
 public interface ResourceRatingService {
 
   /**
-   * 对资源进行评分（如果用户已经评分则覆盖）
+   * 对资源进行评分（每个用户只能评分一次，且不能给自己的资源评分）
    */
   void rate(ResourceRateDTO dto);
 }
-
-
 
 
 

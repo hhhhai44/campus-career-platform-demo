@@ -41,7 +41,6 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
       throws Exception {
-    log.info("token 刷新拦截器执行了");
     // 1.获取请求头中的token
     String token = request.getHeader("Authorization");
 
@@ -51,7 +50,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
     if (StrUtil.isBlank(token)) {
       return true;
     }
-    
+
     try {
       // 2.从token中解析出jti（token ID），用于构建Redis key
       // 注意：即使token过期，getJtiFromToken也能获取jti
@@ -76,12 +75,14 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
       
       // 5.将用户信息保存到ThreadLocal
       UserContextHolder.saveUser(context);
+      log.debug("TOKEN_CONTEXT_RESTORED userId={} username={} uri={}", context.getUserId(),
+          context.getUsername(), request.getRequestURI());
 
       // 6.刷新token有效期（使用配置的ttl，而不是硬编码的常量）
       stringRedisTemplate.expire(redisKey, jwtProperties.getTtl(), TimeUnit.SECONDS);
     } catch (Exception e) {
       // token解析失败（格式错误、签名错误等），不拦截，让后续拦截器处理
-      log.debug("token解析失败: {}", e.getMessage());
+      log.debug("token解析失败 uri={} err={}", request.getRequestURI(), e.getMessage());
       return true;
     }
     

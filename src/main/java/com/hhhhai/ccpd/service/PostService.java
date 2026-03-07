@@ -38,6 +38,22 @@ public interface PostService {
    * @return 详情
    */
   PostDetailVO getPostDetail(Long postId);
+
+  /**
+   * 删除帖子
+   *
+   * @param postId 帖子ID
+   */
+  void deletePost(Long postId);
+
+  /**
+   * 查询当前用户发布的帖子列表
+   *
+   * @param page 当前页码
+   * @param size 每页大小
+   * @return 分页结果
+   */
+  Page<PostListItemVO> pageMyPosts(Long page, Long size);
 }
 
 

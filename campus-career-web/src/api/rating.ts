@@ -3,7 +3,6 @@ import { postJson } from '@/api/http'
 export type RateResourceReq = {
   resourceId: number
   score: number
-  comment?: string
 }
 
 export const ratingApi = {
@@ -12,4 +11,3 @@ export const ratingApi = {
     return postJson<void, RateResourceReq>('/resource/rating', req)
   },
 }
-

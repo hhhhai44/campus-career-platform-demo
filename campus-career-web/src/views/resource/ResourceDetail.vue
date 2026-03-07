@@ -2,8 +2,11 @@
 import { ElMessage } from 'element-plus'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ApiError } from '@/api/http'
 import { resourceApi, type ResourceDetail } from '@/api/resource'
 import { ratingApi } from '@/api/rating'
+import { resourceCommentApi, type ResourceComment } from '@/api/resourceComment'
+import ResourceCommentList from '@/components/ResourceCommentList.vue'
 
 const route = useRoute()
 
@@ -11,8 +14,13 @@ const resource = ref<ResourceDetail | null>(null)
 const loading = ref(false)
 
 const score = ref(0)
-const comment = ref('')
 const submitting = ref(false)
+
+const comments = ref<ResourceComment[]>([])
+const loadingComments = ref(false)
+const submittingComment = ref(false)
+const commentContent = ref('')
+const replyingTo = ref<ResourceComment | null>(null)
 
 async function fetchDetail(id: number) {
   loading.value = true
@@ -23,6 +31,19 @@ async function fetchDetail(id: number) {
     resource.value = null
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchComments(resourceId: number) {
+  loadingComments.value = true
+  try {
+    const page = await resourceCommentApi.page(resourceId, 1, 20)
+    comments.value = page.records
+  } catch {
+    comments.value = []
+    ElMessage.error('评论加载失败，请稍后重试')
+  } finally {
+    loadingComments.value = false
   }
 }
 
@@ -38,17 +59,60 @@ async function submitRating() {
     await ratingApi.rate({
       resourceId: resource.value.id,
       score: score.value,
-      comment: comment.value.trim() || undefined,
     })
     score.value = 0
-    comment.value = ''
     await fetchDetail(resource.value.id)
     ElMessage.success('评分提交成功')
-  } catch {
-    ElMessage.error('评分提交失败，请稍后重试')
+  } catch (e) {
+    if (e instanceof ApiError) {
+      ElMessage.error(e.message || '评分提交失败，请稍后重试')
+    } else {
+      ElMessage.error('评分提交失败，请稍后重试')
+    }
   } finally {
     submitting.value = false
   }
+}
+
+async function submitComment() {
+  if (!resource.value || !commentContent.value.trim()) return
+  submittingComment.value = true
+  try {
+    await resourceCommentApi.create({
+      resourceId: resource.value.id,
+      content: commentContent.value.trim(),
+      rootId: replyingTo.value?.rootId || replyingTo.value?.id || null,
+      parentId: replyingTo.value?.id || null,
+      toUserId: replyingTo.value?.fromUserId || null,
+    })
+    commentContent.value = ''
+    replyingTo.value = null
+    await fetchComments(resource.value.id)
+    ElMessage.success('评论发表成功')
+  } catch (e) {
+    if (e instanceof ApiError) {
+      ElMessage.error(e.message || '评论发表失败，请稍后重试')
+    } else {
+      ElMessage.error('评论发表失败，请稍后重试')
+    }
+  } finally {
+    submittingComment.value = false
+  }
+}
+
+function handleReply(comment: ResourceComment) {
+  replyingTo.value = comment
+  commentContent.value = `@${comment.fromUserName} `
+}
+
+function cancelReply() {
+  replyingTo.value = null
+  commentContent.value = ''
+}
+
+async function handleCommentRefresh() {
+  if (!resource.value) return
+  await fetchComments(resource.value.id)
 }
 
 watch(
@@ -56,11 +120,13 @@ watch(
   async (id) => {
     if (!id) {
       resource.value = null
+      comments.value = []
       return
     }
     score.value = 0
-    comment.value = ''
-    await fetchDetail(id)
+    commentContent.value = ''
+    replyingTo.value = null
+    await Promise.all([fetchDetail(id), fetchComments(id)])
   },
   { immediate: true },
 )
@@ -119,20 +185,50 @@ watch(
           <el-form-item label="评分">
             <el-rate v-model="score" :max="5" allow-half />
           </el-form-item>
-          <el-form-item label="评价">
-            <el-input
-              v-model="comment"
-              type="textarea"
-              :rows="3"
-              placeholder="可以简单写下资源的质量、是否推荐给同学等"
-            />
-          </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="submitting" @click="submitRating">
               提交评分
             </el-button>
           </el-form-item>
         </el-form>
+      </el-card>
+
+      <el-card class="comment-card" shadow="never">
+        <div class="comment-title">资源评论</div>
+        <el-form @submit.prevent>
+          <el-form-item v-if="replyingTo">
+            <div class="reply-hint">
+              正在回复 <span class="reply-user">@{{ replyingTo.fromUserName }}</span>
+              <el-button text type="primary" size="small" @click="cancelReply">取消</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-input
+              v-model="commentContent"
+              type="textarea"
+              :rows="3"
+              :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你对资源的看法... '"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="submittingComment" @click="submitComment">
+              {{ replyingTo ? '回复' : '发表评论' }}
+            </el-button>
+            <el-button v-if="replyingTo" @click="cancelReply">取消</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-skeleton v-if="loadingComments" animated :rows="5" />
+        <template v-else>
+          <ResourceCommentList
+            v-if="comments.length"
+            :comments="comments"
+            :resource-id="resource?.id || 0"
+            @refresh="handleCommentRefresh"
+            @reply="handleReply"
+          />
+          <div v-else class="empty-text">还没有评论，来发表第一条评论吧～</div>
+        </template>
       </el-card>
     </template>
   </div>
@@ -229,14 +325,39 @@ watch(
   margin-top: 2px;
 }
 
-.rate-card {
+.rate-card,
+.comment-card {
   border-radius: var(--ccp-card-radius);
 }
 
-.rate-title {
+.rate-title,
+.comment-title {
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 10px;
+}
+
+.reply-hint {
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reply-user {
+  font-weight: 600;
+  color: var(--ccp-primary);
+}
+
+.empty-text {
+  padding: 18px 0;
+  font-size: var(--ccp-sub-size);
+  color: var(--ccp-text-light);
+  text-align: center;
 }
 
 @media (max-width: 640px) {

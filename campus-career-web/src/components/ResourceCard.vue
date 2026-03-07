@@ -28,6 +28,7 @@ function gotoDetail() {
       <div class="stats">
         <span>⭐ {{ resource.scoreAvg?.toFixed?.(1) ?? '-' }} ({{ resource.scoreCount }})</span>
         <span>收藏 {{ resource.favoriteCount }}</span>
+        <span>💬 {{ resource.commentCount }}</span>
         <span>⬇️ {{ resource.downloadCount }}</span>
       </div>
     </div>

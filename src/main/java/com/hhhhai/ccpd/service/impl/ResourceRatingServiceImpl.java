@@ -3,9 +3,11 @@ package com.hhhhai.ccpd.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.dto.resource.ResourceRateDTO;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceRatingEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.ResourceMapper;
 import com.hhhhai.ccpd.mapper.ResourceRatingMapper;
 import com.hhhhai.ccpd.service.ResourceRatingService;
@@ -30,32 +32,33 @@ public class ResourceRatingServiceImpl implements ResourceRatingService {
   public void rate(ResourceRateDTO dto) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new RuntimeException("未登录，无法评分");
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
     }
     Long userId = user.getUserId();
-
     Long resourceId = dto.getResourceId();
 
-    // 查询是否已有评分记录，有则更新，没有则插入
+    ResourceEntity resource = resourceMapper.selectById(resourceId);
+    if (resource == null) {
+      throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+    if (resource.getUploaderId() != null && resource.getUploaderId().equals(userId)) {
+      throw new BusinessException(ErrorCode.RESOURCE_SELF_RATE_FORBIDDEN);
+    }
+
     LambdaQueryWrapper<ResourceRatingEntity> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(ResourceRatingEntity::getResourceId, resourceId)
         .eq(ResourceRatingEntity::getUserId, userId);
     ResourceRatingEntity exist = resourceRatingMapper.selectOne(wrapper);
-    if (exist == null) {
-      ResourceRatingEntity rating = new ResourceRatingEntity();
-      rating.setResourceId(resourceId);
-      rating.setUserId(userId);
-      rating.setScore(dto.getScore());
-      rating.setComment(dto.getComment());
-      resourceRatingMapper.insert(rating);
-    } else {
-      exist.setScore(dto.getScore());
-      exist.setComment(dto.getComment());
-      resourceRatingMapper.updateById(exist);
+    if (exist != null) {
+      throw new BusinessException(ErrorCode.RESOURCE_ALREADY_RATED);
     }
 
-    // 重新统计该资源的平均分和评分人数，并更新到 resource 表
-    // 为简单起见，这里直接从数据库聚合计算
+    ResourceRatingEntity rating = new ResourceRatingEntity();
+    rating.setResourceId(resourceId);
+    rating.setUserId(userId);
+    rating.setScore(dto.getScore());
+    resourceRatingMapper.insert(rating);
+
     Integer totalScore =
         resourceRatingMapper.selectList(
                 new LambdaQueryWrapper<ResourceRatingEntity>()
@@ -72,14 +75,9 @@ public class ResourceRatingServiceImpl implements ResourceRatingService {
       BigDecimal avg =
           BigDecimal.valueOf(totalScore)
               .divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
-      ResourceEntity resource = resourceMapper.selectById(resourceId);
-      if (resource != null) {
-        resource.setScoreAvg(avg);
-        resource.setScoreCount((int) count);
-        resourceMapper.updateById(resource);
-      }
+      resource.setScoreAvg(avg);
+      resource.setScoreCount((int) count);
+      resourceMapper.updateById(resource);
     }
   }
 }
-
-

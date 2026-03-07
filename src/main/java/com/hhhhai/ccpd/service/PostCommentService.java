@@ -20,6 +20,11 @@ public interface PostCommentService {
    * 分页查询某个帖子的评论（包含二级评论）
    */
   Page<PostCommentVO> pageComments(Long postId, Long page, Long size);
+
+  /**
+   * 删除评论
+   */
+  void deleteComment(Long commentId);
 }
 
 

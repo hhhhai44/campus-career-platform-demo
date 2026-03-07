@@ -54,7 +54,6 @@ CREATE TABLE IF NOT EXISTS `resource_rating` (
   `resource_id` BIGINT NOT NULL COMMENT '资源ID',
   `user_id` BIGINT NOT NULL COMMENT '用户ID',
   `score` TINYINT NOT NULL COMMENT '评分分值，1-5',
-  `comment` VARCHAR(1000) DEFAULT NULL COMMENT '评分评语',
   `create_time` DATETIME NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_resource_user` (`resource_id`, `user_id`),
@@ -64,7 +63,28 @@ CREATE TABLE IF NOT EXISTS `resource_rating` (
 
 
 -- =========================
--- 4. 资源点赞表（预留） resource_like
+-- 4. 资源评论表 resource_comment
+-- =========================
+CREATE TABLE IF NOT EXISTS `resource_comment` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `resource_id` BIGINT NOT NULL COMMENT '资源ID',
+  `root_id` BIGINT DEFAULT NULL COMMENT '根评论ID（一级评论插入后回填为自身ID）',
+  `parent_id` BIGINT DEFAULT NULL COMMENT '父评论ID',
+  `from_user_id` BIGINT NOT NULL COMMENT '评论用户ID',
+  `to_user_id` BIGINT DEFAULT NULL COMMENT '被回复用户ID',
+  `content` VARCHAR(1000) NOT NULL COMMENT '评论内容',
+  `like_count` INT DEFAULT 0 COMMENT '点赞数量',
+  `status` TINYINT DEFAULT 1 COMMENT '状态：1-正常 0-删除/禁用',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_resource_comment_resource` (`resource_id`),
+  KEY `idx_resource_comment_root` (`root_id`),
+  KEY `idx_resource_comment_parent` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源评论表';
+
+
+-- =========================
+-- 5. 资源点赞表（预留） resource_like
 -- =========================
 CREATE TABLE IF NOT EXISTS `resource_like` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -77,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `resource_like` (
 
 
 -- =========================
--- 5. 资源收藏表（预留） resource_favorite
+-- 6. 资源收藏表（预留） resource_favorite
 -- =========================
 CREATE TABLE IF NOT EXISTS `resource_favorite` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -87,10 +107,3 @@ CREATE TABLE IF NOT EXISTS `resource_favorite` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_resource_fav_user` (`resource_id`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源收藏记录表';
-
-
-
-
-
-
-
