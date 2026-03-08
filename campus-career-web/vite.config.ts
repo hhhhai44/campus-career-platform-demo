@@ -18,7 +18,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
+    //vueDevTools(),
   ],
   /**
    * 本地开发代理：
@@ -30,6 +30,10 @@ export default defineConfig({
    * - 实际转发为 `POST http://localhost:8081/auth/login`
    */
   server: {
+    // Keep dev server on a fixed address so Nginx can always reach it.
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8081',
@@ -37,6 +41,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+    allowedHosts: [
+      '.ngrok-free.app',
+      'localhost',
+      '127.0.0.1',
+    ],
   },
   resolve: {
     alias: {

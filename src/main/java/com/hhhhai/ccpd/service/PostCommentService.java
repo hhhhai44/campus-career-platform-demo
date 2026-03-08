@@ -2,6 +2,7 @@ package com.hhhhai.ccpd.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.dto.forum.PostCommentCreateDTO;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.forum.PostCommentVO;
 import org.springframework.stereotype.Service;
 
@@ -25,11 +26,9 @@ public interface PostCommentService {
    * 删除评论
    */
   void deleteComment(Long commentId);
+
+  /**
+   * 评论点赞/取消点赞
+   */
+  LikeToggleVO toggleLike(Long commentId);
 }
-
-
-
-
-
-
-

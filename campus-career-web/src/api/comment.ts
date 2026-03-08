@@ -1,5 +1,6 @@
 import { deleteJson, getJson, postJson } from '@/api/http'
 
+import type { LikeToggleResp } from './interaction'
 import type { PageResult } from './post'
 
 export type PostComment = {
@@ -13,6 +14,7 @@ export type PostComment = {
   toUserName: string | null
   content: string
   likeCount: number
+  liked?: boolean
   createTime: string
   children?: PostComment[]
 }
@@ -42,5 +44,9 @@ export const commentApi = {
   delete(id: number) {
     return deleteJson(`/forum/post/comment/${id}`)
   },
-}
 
+  // POST /forum/post/comment/{id}/like/toggle
+  likeToggle(id: number) {
+    return postJson<LikeToggleResp, unknown>(`/forum/post/comment/${id}/like/toggle`)
+  },
+}

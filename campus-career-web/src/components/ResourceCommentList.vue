@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { resourceCommentApi, type ResourceComment } from '@/api/resourceComment'
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const likeLoadingMap = reactive<Record<number, boolean>>({})
 
 async function handleDelete(comment: ResourceComment) {
   try {
@@ -34,6 +36,20 @@ async function handleDelete(comment: ResourceComment) {
 
 function handleReply(comment: ResourceComment) {
   emit('reply', comment)
+}
+
+async function handleLike(comment: ResourceComment) {
+  if (!auth.isAuthed || likeLoadingMap[comment.id]) return
+  likeLoadingMap[comment.id] = true
+  try {
+    const resp = await resourceCommentApi.likeToggle(comment.id)
+    comment.liked = resp.liked
+    comment.likeCount = resp.likeCount
+  } catch (err: any) {
+    ElMessage.error(err?.message || '操作失败，请稍后重试')
+  } finally {
+    likeLoadingMap[comment.id] = false
+  }
 }
 </script>
 
@@ -59,6 +75,15 @@ function handleReply(comment: ResourceComment) {
             {{ item.content }}
           </div>
           <div class="comment-actions">
+            <el-button
+              text
+              :type="item.liked ? 'primary' : 'default'"
+              size="small"
+              :loading="!!likeLoadingMap[item.id]"
+              @click="handleLike(item)"
+            >
+              👍 {{ item.liked ? '已赞' : '点赞' }} {{ item.likeCount || 0 }}
+            </el-button>
             <el-button text type="primary" size="small" @click="handleReply(item)">回复</el-button>
             <el-button v-if="auth.isAuthed" text type="danger" size="small" @click="handleDelete(item)">
               删除

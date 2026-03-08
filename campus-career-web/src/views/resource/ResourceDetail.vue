@@ -22,10 +22,18 @@ const submittingComment = ref(false)
 const commentContent = ref('')
 const replyingTo = ref<ResourceComment | null>(null)
 
+const likeLoading = ref(false)
+const favoriteLoading = ref(false)
+
 async function fetchDetail(id: number) {
   loading.value = true
   try {
-    resource.value = await resourceApi.detail(id)
+    const detail = await resourceApi.detail(id)
+    resource.value = {
+      ...detail,
+      liked: !!detail.liked,
+      favorited: !!detail.favorited,
+    }
   } catch {
     ElMessage.error('资源详情加载失败，请稍后重试')
     resource.value = null
@@ -47,9 +55,46 @@ async function fetchComments(resourceId: number) {
   }
 }
 
-function onDownload() {
-  if (!resource.value?.fileUrl) return
-  window.open(resource.value.fileUrl, '_blank', 'noopener,noreferrer')
+async function onDownload() {
+  if (!resource.value) return
+  try {
+    const url = await resourceApi.download(resource.value.id)
+    resource.value.downloadCount = (resource.value.downloadCount || 0) + 1
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch {
+    ElMessage.error('下载失败，请稍后重试')
+  }
+}
+
+async function onLike() {
+  if (!resource.value || likeLoading.value) return
+  likeLoading.value = true
+  try {
+    const resp = await resourceApi.likeToggle(resource.value.id)
+    resource.value.liked = resp.liked
+    resource.value.likeCount = resp.likeCount
+  } catch {
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    likeLoading.value = false
+  }
+}
+
+async function onFavorite() {
+  if (!resource.value || favoriteLoading.value) return
+  favoriteLoading.value = true
+  try {
+    const resp = await resourceApi.favoriteToggle(resource.value.id)
+    resource.value.favorited = resp.favorited
+    resource.value.favoriteCount = Math.max(
+      0,
+      (resource.value.favoriteCount || 0) + (resp.favorited ? 1 : -1),
+    )
+  } catch {
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    favoriteLoading.value = false
+  }
 }
 
 async function submitRating() {
@@ -176,6 +221,27 @@ watch(
               {{ resource.scoreCount }} 人评分 · {{ resource.downloadCount }} 次下载
             </div>
           </div>
+        </div>
+
+        <div class="actions">
+          <el-button
+            :type="resource.liked ? 'primary' : 'default'"
+            round
+            size="small"
+            :loading="likeLoading"
+            @click="onLike"
+          >
+            👍 {{ resource.liked ? '已赞' : '点赞' }} {{ resource.likeCount || 0 }}
+          </el-button>
+          <el-button
+            :type="resource.favorited ? 'warning' : 'default'"
+            round
+            size="small"
+            :loading="favoriteLoading"
+            @click="onFavorite"
+          >
+            ⭐ {{ resource.favorited ? '已收藏' : '收藏' }} {{ resource.favoriteCount || 0 }}
+          </el-button>
         </div>
       </el-card>
 
@@ -335,6 +401,25 @@ watch(
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 10px;
+}
+
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.action-item:hover {
+  background: #f5f7ff;
 }
 
 .reply-hint {

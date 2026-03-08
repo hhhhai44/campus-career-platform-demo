@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.result.Result;
 import com.hhhhai.ccpd.dto.resource.ResourceCommentCreateDTO;
 import com.hhhhai.ccpd.service.ResourceCommentService;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.resource.ResourceCommentVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -48,5 +49,10 @@ public class ResourceCommentController {
     resourceCommentService.deleteComment(id);
     return Result.success();
   }
-}
 
+  @PostMapping("/{id}/like/toggle")
+  public Result<LikeToggleVO> likeToggle(@PathVariable("id") Long id) {
+    LikeToggleVO vo = resourceCommentService.toggleLike(id);
+    return Result.success(vo);
+  }
+}

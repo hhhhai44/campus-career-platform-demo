@@ -25,3 +25,4 @@ public class ResourceRateDTO {
   @Max(value = 5, message = "评分不能大于5")
   private Integer score;
 }
+

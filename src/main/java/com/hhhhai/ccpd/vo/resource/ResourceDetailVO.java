@@ -32,14 +32,17 @@ public class ResourceDetailVO {
 
   private Integer scoreCount;
 
+  private Integer likeCount;
+
+  private Integer favoriteCount;
+
+  /** 当前用户是否已点赞 */
+  private Boolean liked;
+
+  /** 当前用户是否已收藏 */
+  private Boolean favorited;
+
   private Integer downloadCount;
 
   private LocalDateTime createTime;
 }
-
-
-
-
-
-
-

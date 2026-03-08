@@ -2,6 +2,7 @@ package com.hhhhai.ccpd.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.dto.resource.ResourceCommentCreateDTO;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.resource.ResourceCommentVO;
 
 /**
@@ -14,5 +15,6 @@ public interface ResourceCommentService {
   Page<ResourceCommentVO> pageComments(Long resourceId, Long page, Long size);
 
   void deleteComment(Long commentId);
-}
 
+  LikeToggleVO toggleLike(Long commentId);
+}

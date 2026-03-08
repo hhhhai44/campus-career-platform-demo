@@ -10,29 +10,22 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 /**
- * 帖子收藏记录实体
+ * 帖子评论点赞记录
  */
 @Data
-@TableName("post_favorite")
-public class PostFavoriteEntity implements Serializable {
+@TableName("post_comment_like")
+public class PostCommentLikeEntity implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  private Long postId;
+  private Long commentId;
 
   private Long userId;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }
-
-
-
-
-
-
-
 

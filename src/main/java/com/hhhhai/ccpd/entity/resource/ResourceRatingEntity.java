@@ -33,3 +33,4 @@ public class ResourceRatingEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }
+

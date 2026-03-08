@@ -18,3 +18,4 @@ public interface PostFavoriteMapper extends BaseMapper<PostFavoriteEntity> {
 
 
 
+

@@ -30,6 +30,9 @@ public class PostCommentVO {
 
   private Integer likeCount;
 
+  /** 当前用户是否已点赞 */
+  private Boolean liked;
+
   private LocalDateTime createTime;
 
   /**
@@ -37,10 +40,3 @@ public class PostCommentVO {
    */
   private List<PostCommentVO> children;
 }
-
-
-
-
-
-
-

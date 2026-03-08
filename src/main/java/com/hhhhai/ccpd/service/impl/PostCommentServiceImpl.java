@@ -4,21 +4,25 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.context.UserContext;
 import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.dto.forum.PostCommentCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCommentEntity;
+import com.hhhhai.ccpd.entity.forum.PostCommentLikeEntity;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.exception.BusinessException;
+import com.hhhhai.ccpd.mapper.PostCommentLikeMapper;
 import com.hhhhai.ccpd.mapper.PostCommentMapper;
 import com.hhhhai.ccpd.mapper.PostMapper;
 import com.hhhhai.ccpd.mapper.UserMapper;
-import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.service.NotificationService;
 import com.hhhhai.ccpd.service.PostCommentService;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.forum.PostCommentVO;
 import jakarta.annotation.Resource;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +39,9 @@ public class PostCommentServiceImpl implements PostCommentService {
 
   @Resource
   private PostCommentMapper postCommentMapper;
+
+  @Resource
+  private PostCommentLikeMapper postCommentLikeMapper;
 
   @Resource
   private NotificationService notificationService;
@@ -137,37 +144,34 @@ public class PostCommentServiceImpl implements PostCommentService {
       userNameMap = new HashMap<>();
     }
 
+    final Set<Long> likedCommentIds = loadLikedCommentIds(roots, children);
+
     Map<Long, List<PostCommentVO>> childrenMap = new HashMap<>();
     for (PostCommentEntity child : children) {
       PostCommentVO vo = new PostCommentVO();
       BeanUtils.copyProperties(child, vo);
       vo.setFromUserName(userNameMap.getOrDefault(child.getFromUserId(), "未知用户"));
+      vo.setLiked(likedCommentIds.contains(child.getId()));
       if (child.getToUserId() != null) {
         vo.setToUserName(userNameMap.getOrDefault(child.getToUserId(), "未知用户"));
       }
-      childrenMap.computeIfAbsent(
-              child.getRootId(), k -> new ArrayList<>())
-          .add(vo);
+      childrenMap.computeIfAbsent(child.getRootId(), k -> new ArrayList<>()).add(vo);
     }
 
     List<PostCommentVO> rootVos =
         roots.stream()
-            .map(
-                root -> {
-                  PostCommentVO vo = new PostCommentVO();
-                  BeanUtils.copyProperties(root, vo);
-                  vo.setFromUserName(userNameMap.getOrDefault(root.getFromUserId(), "未知用户"));
-                  if (root.getToUserId() != null) {
-                    vo.setToUserName(userNameMap.getOrDefault(root.getToUserId(), "未知用户"));
-                  }
-                  List<PostCommentVO> childList = childrenMap.get(root.getId());
-                  if (childList != null) {
-                    vo.setChildren(childList);
-                  } else {
-                    vo.setChildren(new ArrayList<>());
-                  }
-                  return vo;
-                })
+            .map(root -> {
+              PostCommentVO vo = new PostCommentVO();
+              BeanUtils.copyProperties(root, vo);
+              vo.setFromUserName(userNameMap.getOrDefault(root.getFromUserId(), "未知用户"));
+              vo.setLiked(likedCommentIds.contains(root.getId()));
+              if (root.getToUserId() != null) {
+                vo.setToUserName(userNameMap.getOrDefault(root.getToUserId(), "未知用户"));
+              }
+              List<PostCommentVO> childList = childrenMap.get(root.getId());
+              vo.setChildren(childList == null ? new ArrayList<>() : childList);
+              return vo;
+            })
             .collect(Collectors.toList());
 
     Page<PostCommentVO> result = new Page<>(page, size, entityPage.getTotal());
@@ -201,6 +205,43 @@ public class PostCommentServiceImpl implements PostCommentService {
     updatePostCommentCount(comment.getPostId());
   }
 
+  @Override
+  @Transactional
+  public LikeToggleVO toggleLike(Long commentId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    PostCommentEntity comment = postCommentMapper.selectById(commentId);
+    if (comment == null || comment.getStatus() != ContentStatusEnum.NORMAL) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    LambdaQueryWrapper<PostCommentLikeEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(PostCommentLikeEntity::getCommentId, commentId)
+        .eq(PostCommentLikeEntity::getUserId, user.getUserId());
+    PostCommentLikeEntity exist = postCommentLikeMapper.selectOne(wrapper);
+
+    boolean liked;
+    if (exist != null) {
+      postCommentLikeMapper.deleteById(exist.getId());
+      postCommentMapper.decrementLikeCount(commentId);
+      liked = false;
+    } else {
+      PostCommentLikeEntity entity = new PostCommentLikeEntity();
+      entity.setCommentId(commentId);
+      entity.setUserId(user.getUserId());
+      postCommentLikeMapper.insert(entity);
+      postCommentMapper.incrementLikeCount(commentId);
+      liked = true;
+    }
+
+    PostCommentEntity latest = postCommentMapper.selectById(commentId);
+    long count = latest == null || latest.getLikeCount() == null ? 0L : latest.getLikeCount();
+    return new LikeToggleVO(liked, count);
+  }
+
   /**
    * 更新帖子的评论数
    */
@@ -213,5 +254,26 @@ public class PostCommentServiceImpl implements PostCommentService {
         .eq(PostCommentEntity::getStatus, ContentStatusEnum.NORMAL);
     Long count = postCommentMapper.selectCount(wrapper);
     postMapper.updateCommentCount(postId, count == null ? 0 : count.intValue());
+  }
+
+  private Set<Long> loadLikedCommentIds(List<PostCommentEntity> roots,
+      List<PostCommentEntity> children) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      return new HashSet<>();
+    }
+    List<Long> allCommentIds = new ArrayList<>();
+    allCommentIds.addAll(roots.stream().map(PostCommentEntity::getId).collect(Collectors.toList()));
+    allCommentIds.addAll(children.stream().map(PostCommentEntity::getId).collect(Collectors.toList()));
+    if (allCommentIds.isEmpty()) {
+      return new HashSet<>();
+    }
+    return postCommentLikeMapper.selectList(
+        new LambdaQueryWrapper<PostCommentLikeEntity>()
+            .eq(PostCommentLikeEntity::getUserId, user.getUserId())
+            .in(PostCommentLikeEntity::getCommentId, allCommentIds))
+        .stream()
+        .map(PostCommentLikeEntity::getCommentId)
+        .collect(Collectors.toSet());
   }
 }

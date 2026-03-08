@@ -8,17 +8,21 @@ import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.dto.resource.ResourceCommentCreateDTO;
 import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
+import com.hhhhai.ccpd.entity.resource.ResourceCommentLikeEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.exception.BusinessException;
+import com.hhhhai.ccpd.mapper.ResourceCommentLikeMapper;
 import com.hhhhai.ccpd.mapper.ResourceCommentMapper;
 import com.hhhhai.ccpd.mapper.ResourceMapper;
 import com.hhhhai.ccpd.mapper.UserMapper;
 import com.hhhhai.ccpd.service.ResourceCommentService;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.resource.ResourceCommentVO;
 import jakarta.annotation.Resource;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +39,9 @@ public class ResourceCommentServiceImpl implements ResourceCommentService {
 
   @Resource
   private ResourceCommentMapper resourceCommentMapper;
+
+  @Resource
+  private ResourceCommentLikeMapper resourceCommentLikeMapper;
 
   @Resource
   private ResourceMapper resourceMapper;
@@ -124,11 +131,14 @@ public class ResourceCommentServiceImpl implements ResourceCommentService {
       userNameMap = new HashMap<>();
     }
 
+    final Set<Long> likedCommentIds = loadLikedCommentIds(roots, children);
+
     Map<Long, List<ResourceCommentVO>> childrenMap = new HashMap<>();
     for (ResourceCommentEntity child : children) {
       ResourceCommentVO vo = new ResourceCommentVO();
       BeanUtils.copyProperties(child, vo);
       vo.setFromUserName(userNameMap.getOrDefault(child.getFromUserId(), "未知用户"));
+      vo.setLiked(likedCommentIds.contains(child.getId()));
       if (child.getToUserId() != null) {
         vo.setToUserName(userNameMap.getOrDefault(child.getToUserId(), "未知用户"));
       }
@@ -139,6 +149,7 @@ public class ResourceCommentServiceImpl implements ResourceCommentService {
       ResourceCommentVO vo = new ResourceCommentVO();
       BeanUtils.copyProperties(root, vo);
       vo.setFromUserName(userNameMap.getOrDefault(root.getFromUserId(), "未知用户"));
+      vo.setLiked(likedCommentIds.contains(root.getId()));
       if (root.getToUserId() != null) {
         vo.setToUserName(userNameMap.getOrDefault(root.getToUserId(), "未知用户"));
       }
@@ -171,5 +182,62 @@ public class ResourceCommentServiceImpl implements ResourceCommentService {
     comment.setStatus(ContentStatusEnum.DISABLED);
     resourceCommentMapper.updateById(comment);
   }
-}
 
+  @Override
+  @Transactional
+  public LikeToggleVO toggleLike(Long commentId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    ResourceCommentEntity comment = resourceCommentMapper.selectById(commentId);
+    if (comment == null || comment.getStatus() != ContentStatusEnum.NORMAL) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    LambdaQueryWrapper<ResourceCommentLikeEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(ResourceCommentLikeEntity::getCommentId, commentId)
+        .eq(ResourceCommentLikeEntity::getUserId, user.getUserId());
+    ResourceCommentLikeEntity exist = resourceCommentLikeMapper.selectOne(wrapper);
+
+    boolean liked;
+    if (exist != null) {
+      resourceCommentLikeMapper.deleteById(exist.getId());
+      resourceCommentMapper.decrementLikeCount(commentId);
+      liked = false;
+    } else {
+      ResourceCommentLikeEntity entity = new ResourceCommentLikeEntity();
+      entity.setCommentId(commentId);
+      entity.setUserId(user.getUserId());
+      resourceCommentLikeMapper.insert(entity);
+      resourceCommentMapper.incrementLikeCount(commentId);
+      liked = true;
+    }
+
+    ResourceCommentEntity latest = resourceCommentMapper.selectById(commentId);
+    long count = latest == null || latest.getLikeCount() == null ? 0L : latest.getLikeCount();
+    return new LikeToggleVO(liked, count);
+  }
+
+  private Set<Long> loadLikedCommentIds(List<ResourceCommentEntity> roots,
+      List<ResourceCommentEntity> children) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      return new HashSet<>();
+    }
+    List<Long> allCommentIds = new ArrayList<>();
+    allCommentIds.addAll(roots.stream().map(ResourceCommentEntity::getId).collect(Collectors.toList()));
+    allCommentIds.addAll(children.stream().map(ResourceCommentEntity::getId).collect(Collectors.toList()));
+    if (allCommentIds.isEmpty()) {
+      return new HashSet<>();
+    }
+    return resourceCommentLikeMapper.selectList(
+        new LambdaQueryWrapper<ResourceCommentLikeEntity>()
+            .eq(ResourceCommentLikeEntity::getUserId, user.getUserId())
+            .in(ResourceCommentLikeEntity::getCommentId, allCommentIds))
+        .stream()
+        .map(ResourceCommentLikeEntity::getCommentId)
+        .collect(Collectors.toSet());
+  }
+}

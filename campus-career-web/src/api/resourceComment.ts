@@ -1,4 +1,5 @@
 import { deleteJson, getJson, postJson } from '@/api/http'
+import type { LikeToggleResp } from '@/api/interaction'
 import type { PageResult } from '@/api/post'
 
 export type ResourceComment = {
@@ -12,6 +13,7 @@ export type ResourceComment = {
   toUserName: string | null
   content: string
   likeCount: number
+  liked?: boolean
   createTime: string
   children?: ResourceComment[]
 }
@@ -38,5 +40,8 @@ export const resourceCommentApi = {
   delete(id: number) {
     return deleteJson(`/resource/comment/${id}`)
   },
-}
 
+  likeToggle(id: number) {
+    return postJson<LikeToggleResp, unknown>(`/resource/comment/${id}/like/toggle`)
+  },
+}

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.common.result.Result;
 import com.hhhhai.ccpd.dto.forum.PostCommentCreateDTO;
 import com.hhhhai.ccpd.service.PostCommentService;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.forum.PostCommentVO;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
@@ -57,11 +58,13 @@ public class PostCommentController {
     postCommentService.deleteComment(id);
     return Result.success();
   }
+
+  /**
+   * 评论点赞/取消点赞 Toggle
+   */
+  @PostMapping("/{id}/like/toggle")
+  public Result<LikeToggleVO> likeToggle(@PathVariable("id") Long id) {
+    LikeToggleVO vo = postCommentService.toggleLike(id);
+    return Result.success(vo);
+  }
 }
-
-
-
-
-
-
-

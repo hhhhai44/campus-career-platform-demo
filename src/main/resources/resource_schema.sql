@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS `resource` (
   `tags` VARCHAR(255) DEFAULT NULL COMMENT '标签，逗号分隔',
   `score_avg` DECIMAL(3,2) DEFAULT 0 COMMENT '平均评分',
   `score_count` INT DEFAULT 0 COMMENT '评分人数',
-  `like_count` INT DEFAULT 0 COMMENT '点赞数量（预留）',
-  `favorite_count` INT DEFAULT 0 COMMENT '收藏数量（预留）',
+  `like_count` INT DEFAULT 0 COMMENT '点赞数量',
+  `favorite_count` INT DEFAULT 0 COMMENT '收藏数量',
   `download_count` INT DEFAULT 0 COMMENT '下载次数',
   `status` TINYINT DEFAULT 1 COMMENT '状态：1-正常 0-下架',
   `deleted` TINYINT DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS `resource_comment` (
 
 
 -- =========================
--- 5. 资源点赞表（预留） resource_like
+-- 5. 资源点赞表 resource_like
 -- =========================
 CREATE TABLE IF NOT EXISTS `resource_like` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `resource_like` (
 
 
 -- =========================
--- 6. 资源收藏表（预留） resource_favorite
+-- 6. 资源收藏表 resource_favorite
 -- =========================
 CREATE TABLE IF NOT EXISTS `resource_favorite` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -107,3 +107,17 @@ CREATE TABLE IF NOT EXISTS `resource_favorite` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_resource_fav_user` (`resource_id`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源收藏记录表';
+
+
+-- =========================
+-- 7. 资源评论点赞表 resource_comment_like
+-- =========================
+CREATE TABLE IF NOT EXISTS `resource_comment_like` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `comment_id` BIGINT NOT NULL COMMENT '评论ID',
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_resource_comment_like_user` (`comment_id`, `user_id`),
+  KEY `idx_resource_comment_like_user` (`user_id`, `comment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源评论点赞记录表';

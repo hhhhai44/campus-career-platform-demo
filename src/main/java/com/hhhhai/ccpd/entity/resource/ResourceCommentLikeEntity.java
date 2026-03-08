@@ -1,4 +1,4 @@
-package com.hhhhai.ccpd.entity.forum;
+package com.hhhhai.ccpd.entity.resource;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
@@ -10,29 +10,22 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 /**
- * 帖子收藏记录实体
+ * 资源评论点赞记录
  */
 @Data
-@TableName("post_favorite")
-public class PostFavoriteEntity implements Serializable {
+@TableName("resource_comment_like")
+public class ResourceCommentLikeEntity implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
   @TableId(type = IdType.AUTO)
   private Long id;
 
-  private Long postId;
+  private Long commentId;
 
   private Long userId;
 
   @TableField(fill = FieldFill.INSERT)
   private LocalDateTime createTime;
 }
-
-
-
-
-
-
-
 

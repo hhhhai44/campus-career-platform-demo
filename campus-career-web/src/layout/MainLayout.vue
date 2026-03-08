@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { notificationApi } from '@/api/notification'
+import { useNotificationStore } from '@/stores/notification'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const notification = useNotificationStore()
 
-const unreadCount = ref(0)
-const loadingUnread = ref(false)
+const unreadCount = computed(() => notification.unreadCount)
 
 const navItems = [
   { label: '首页', path: '/', name: 'home' },
@@ -27,22 +27,13 @@ const activePath = computed(() => {
   return '/'
 })
 
-async function fetchUnread() {
-  try {
-    loadingUnread.value = true
-    unreadCount.value = await notificationApi.unreadCount()
-  } finally {
-    loadingUnread.value = false
-  }
-}
-
 function goto(path: string) {
   if (path === route.path) return
   router.push(path)
 }
 
 function gotoNotifications() {
-  router.push('/me')
+  router.push({ name: 'notification' })
 }
 
 function onLogout() {
@@ -54,16 +45,16 @@ watch(
   () => auth.isAuthed,
   (authed) => {
     if (!authed) {
-      unreadCount.value = 0
+      notification.resetUnread()
       return
     }
-    fetchUnread()
+    notification.fetchUnreadCount()
   },
 )
 
 onMounted(() => {
   if (auth.isAuthed) {
-    fetchUnread()
+    notification.fetchUnreadCount()
   }
 })
 

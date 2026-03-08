@@ -8,15 +8,23 @@ import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.ResourceCategoryEnum;
-import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.dto.resource.ResourceUploadDTO;
-import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceCategoryEntity;
+import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
-import com.hhhhai.ccpd.mapper.ResourceCommentMapper;
+import com.hhhhai.ccpd.entity.resource.ResourceFavoriteEntity;
+import com.hhhhai.ccpd.entity.resource.ResourceLikeEntity;
+import com.hhhhai.ccpd.entity.user.UserEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.ResourceCategoryMapper;
+import com.hhhhai.ccpd.mapper.ResourceCommentMapper;
+import com.hhhhai.ccpd.mapper.ResourceFavoriteMapper;
+import com.hhhhai.ccpd.mapper.ResourceLikeMapper;
 import com.hhhhai.ccpd.mapper.ResourceMapper;
+import com.hhhhai.ccpd.mapper.UserMapper;
 import com.hhhhai.ccpd.service.ResourceService;
+import com.hhhhai.ccpd.vo.forum.FavoriteToggleVO;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.resource.ResourceDetailVO;
 import com.hhhhai.ccpd.vo.resource.ResourceListItemVO;
 import jakarta.annotation.Resource;
@@ -27,6 +35,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
@@ -43,6 +52,15 @@ public class ResourceServiceImpl implements ResourceService {
 
   @Resource
   private ResourceCommentMapper resourceCommentMapper;
+
+  @Resource
+  private ResourceLikeMapper resourceLikeMapper;
+
+  @Resource
+  private ResourceFavoriteMapper resourceFavoriteMapper;
+
+  @Resource
+  private UserMapper userMapper;
 
   @Override
   public Long upload(ResourceUploadDTO dto) {
@@ -103,6 +121,19 @@ public class ResourceServiceImpl implements ResourceService {
         resourceCategoryMapper.selectBatchIds(categoryIds).stream()
             .collect(Collectors.toMap(ResourceCategoryEntity::getId, ResourceCategoryEntity::getName));
 
+    List<Long> uploaderIds =
+        records.stream().map(ResourceEntity::getUploaderId).distinct().collect(Collectors.toList());
+    final Map<Long, String> uploaderNameMap;
+    if (!uploaderIds.isEmpty()) {
+      List<UserEntity> users = userMapper.selectBatchIds(uploaderIds);
+      uploaderNameMap = users.stream().collect(Collectors.toMap(
+          UserEntity::getId,
+          u -> u.getRealName() != null && !u.getRealName().trim().isEmpty()
+              ? u.getRealName() : u.getUsername()));
+    } else {
+      uploaderNameMap = new HashMap<>();
+    }
+
     List<ResourceListItemVO> voList =
         records.stream()
             .map(
@@ -114,7 +145,7 @@ public class ResourceServiceImpl implements ResourceService {
                     categoryName = ResourceCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
                   }
                   vo.setCategoryName(categoryName);
-                  vo.setUploaderName(null);
+                  vo.setUploaderName(uploaderNameMap.getOrDefault(entity.getUploaderId(), "未知用户"));
                   vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
                   return vo;
                 })
@@ -141,8 +172,115 @@ public class ResourceServiceImpl implements ResourceService {
     } else if (entity.getCategoryId() != null) {
       vo.setCategoryName(ResourceCategoryEnum.getDescByCode(entity.getCategoryId().intValue()));
     }
-    vo.setUploaderName(null);
+
+    if (entity.getUploaderId() != null) {
+      UserEntity uploader = userMapper.selectById(entity.getUploaderId());
+      if (uploader != null) {
+        vo.setUploaderName(uploader.getRealName() != null && !uploader.getRealName().trim().isEmpty()
+            ? uploader.getRealName() : uploader.getUsername());
+      } else {
+        vo.setUploaderName("未知用户");
+      }
+    }
+
+    vo.setLiked(false);
+    vo.setFavorited(false);
+    UserContext user = UserContextHolder.getUser();
+    if (user != null && user.getUserId() != null) {
+      LambdaQueryWrapper<ResourceLikeEntity> likeWrapper = new LambdaQueryWrapper<>();
+      likeWrapper.eq(ResourceLikeEntity::getResourceId, resourceId)
+          .eq(ResourceLikeEntity::getUserId, user.getUserId());
+      vo.setLiked(resourceLikeMapper.selectCount(likeWrapper) > 0);
+
+      LambdaQueryWrapper<ResourceFavoriteEntity> favoriteWrapper = new LambdaQueryWrapper<>();
+      favoriteWrapper.eq(ResourceFavoriteEntity::getResourceId, resourceId)
+          .eq(ResourceFavoriteEntity::getUserId, user.getUserId());
+      vo.setFavorited(resourceFavoriteMapper.selectCount(favoriteWrapper) > 0);
+    }
+
     return vo;
+  }
+
+  @Override
+  @Transactional
+  public LikeToggleVO toggleLike(Long resourceId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    ResourceEntity resource = resourceMapper.selectById(resourceId);
+    if (resource == null || resource.getDeleted() == LogicDeleteEnum.DELETED) {
+      throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    LambdaQueryWrapper<ResourceLikeEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(ResourceLikeEntity::getResourceId, resourceId)
+        .eq(ResourceLikeEntity::getUserId, user.getUserId());
+    ResourceLikeEntity exist = resourceLikeMapper.selectOne(wrapper);
+
+    boolean liked;
+    if (exist != null) {
+      resourceLikeMapper.deleteById(exist.getId());
+      resourceMapper.decrementLikeCount(resourceId);
+      liked = false;
+    } else {
+      ResourceLikeEntity entity = new ResourceLikeEntity();
+      entity.setResourceId(resourceId);
+      entity.setUserId(user.getUserId());
+      resourceLikeMapper.insert(entity);
+      resourceMapper.incrementLikeCount(resourceId);
+      liked = true;
+    }
+
+    ResourceEntity latest = resourceMapper.selectById(resourceId);
+    long count = latest == null || latest.getLikeCount() == null ? 0L : latest.getLikeCount();
+    return new LikeToggleVO(liked, count);
+  }
+
+  @Override
+  @Transactional
+  public FavoriteToggleVO toggleFavorite(Long resourceId) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    ResourceEntity resource = resourceMapper.selectById(resourceId);
+    if (resource == null || resource.getDeleted() == LogicDeleteEnum.DELETED) {
+      throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    LambdaQueryWrapper<ResourceFavoriteEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(ResourceFavoriteEntity::getResourceId, resourceId)
+        .eq(ResourceFavoriteEntity::getUserId, user.getUserId());
+    ResourceFavoriteEntity exist = resourceFavoriteMapper.selectOne(wrapper);
+
+    boolean favorited;
+    if (exist != null) {
+      resourceFavoriteMapper.deleteById(exist.getId());
+      resourceMapper.decrementFavoriteCount(resourceId);
+      favorited = false;
+    } else {
+      ResourceFavoriteEntity entity = new ResourceFavoriteEntity();
+      entity.setResourceId(resourceId);
+      entity.setUserId(user.getUserId());
+      resourceFavoriteMapper.insert(entity);
+      resourceMapper.incrementFavoriteCount(resourceId);
+      favorited = true;
+    }
+    return new FavoriteToggleVO(favorited);
+  }
+
+  @Override
+  @Transactional
+  public String getDownloadUrlAndIncreaseCount(Long resourceId) {
+    ResourceEntity resource = resourceMapper.selectById(resourceId);
+    if (resource == null || resource.getDeleted() == LogicDeleteEnum.DELETED) {
+      throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+    resourceMapper.incrementDownloadCount(resourceId);
+    return resource.getFileUrl();
   }
 
   private Map<Long, Long> loadResourceCommentCountMap(List<ResourceEntity> resources) {

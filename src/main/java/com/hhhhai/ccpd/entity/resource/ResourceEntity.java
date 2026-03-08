@@ -66,12 +66,12 @@ public class ResourceEntity implements Serializable {
   private Integer scoreCount;
 
   /**
-   * 点赞数量（预留）
+   * 点赞数量
    */
   private Integer likeCount;
 
   /**
-   * 收藏数量（预留）
+   * 收藏数量
    */
   private Integer favoriteCount;
 
@@ -97,10 +97,3 @@ public class ResourceEntity implements Serializable {
   @TableField(fill = FieldFill.INSERT_UPDATE)
   private LocalDateTime updateTime;
 }
-
-
-
-
-
-
-

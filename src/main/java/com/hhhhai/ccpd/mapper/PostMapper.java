@@ -18,3 +18,4 @@ public interface PostMapper extends BaseMapper<PostEntity> {
   @Update("UPDATE post SET comment_count = #{commentCount} WHERE id = #{postId}")
   int updateCommentCount(@Param("postId") Long postId, @Param("commentCount") Integer commentCount);
 }
+

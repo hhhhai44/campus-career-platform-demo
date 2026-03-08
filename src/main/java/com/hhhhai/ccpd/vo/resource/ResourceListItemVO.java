@@ -28,6 +28,9 @@ public class ResourceListItemVO {
 
   private Integer scoreCount;
 
+  /** 点赞数量 */
+  private Integer likeCount;
+
   /** 收藏数量 */
   private Integer favoriteCount;
 

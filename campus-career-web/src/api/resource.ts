@@ -1,4 +1,5 @@
 import { getJson, postJson } from '@/api/http'
+import type { FavoriteToggleResp, LikeToggleResp } from '@/api/interaction'
 
 import type { PageResult as PostPageResult } from './post'
 
@@ -14,6 +15,7 @@ export type ResourceListItem = {
   uploaderName: string
   scoreAvg: number
   scoreCount: number
+  likeCount: number
   favoriteCount: number
   commentCount: number
   downloadCount: number
@@ -32,6 +34,10 @@ export type ResourceDetail = {
   tags: string | null
   scoreAvg: number
   scoreCount: number
+  likeCount: number
+  favoriteCount: number
+  liked?: boolean
+  favorited?: boolean
   downloadCount: number
   createTime: string
 }
@@ -58,5 +64,20 @@ export const resourceApi = {
   // GET /resource/{id}
   detail(id: number) {
     return getJson<ResourceDetail>(`/resource/${id}`)
+  },
+
+  // POST /resource/{id}/like/toggle
+  likeToggle(id: number) {
+    return postJson<LikeToggleResp, unknown>(`/resource/${id}/like/toggle`)
+  },
+
+  // POST /resource/{id}/favorite/toggle
+  favoriteToggle(id: number) {
+    return postJson<FavoriteToggleResp, unknown>(`/resource/${id}/favorite/toggle`)
+  },
+
+  // POST /resource/{id}/download
+  download(id: number) {
+    return postJson<string, unknown>(`/resource/${id}/download`)
   },
 }

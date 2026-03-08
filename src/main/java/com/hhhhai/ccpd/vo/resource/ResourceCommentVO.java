@@ -30,6 +30,9 @@ public class ResourceCommentVO {
 
   private Integer likeCount;
 
+  /** 当前用户是否已点赞 */
+  private Boolean liked;
+
   private LocalDateTime createTime;
 
   private List<ResourceCommentVO> children;

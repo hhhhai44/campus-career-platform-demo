@@ -2,6 +2,8 @@ package com.hhhhai.ccpd.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.dto.resource.ResourceUploadDTO;
+import com.hhhhai.ccpd.vo.forum.FavoriteToggleVO;
+import com.hhhhai.ccpd.vo.forum.LikeToggleVO;
 import com.hhhhai.ccpd.vo.resource.ResourceDetailVO;
 import com.hhhhai.ccpd.vo.resource.ResourceListItemVO;
 import org.springframework.stereotype.Service;
@@ -35,11 +37,19 @@ public interface ResourceService {
    * 资源详情
    */
   ResourceDetailVO getDetail(Long resourceId);
+
+  /**
+   * 点赞/取消点赞
+   */
+  LikeToggleVO toggleLike(Long resourceId);
+
+  /**
+   * 收藏/取消收藏
+   */
+  FavoriteToggleVO toggleFavorite(Long resourceId);
+
+  /**
+   * 资源下载计数 + 返回下载地址
+   */
+  String getDownloadUrlAndIncreaseCount(Long resourceId);
 }
-
-
-
-
-
-
-

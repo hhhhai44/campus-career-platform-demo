@@ -94,4 +94,15 @@ CREATE TABLE IF NOT EXISTS `post_comment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子评论表';
 
 
-
+-- =========================
+-- 6. 帖子评论点赞表 post_comment_like
+-- =========================
+CREATE TABLE IF NOT EXISTS `post_comment_like` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `comment_id` BIGINT NOT NULL COMMENT '评论ID',
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `create_time` DATETIME NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_post_comment_like_user` (`comment_id`, `user_id`),
+  KEY `idx_post_comment_like_user` (`user_id`, `comment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子评论点赞记录表';

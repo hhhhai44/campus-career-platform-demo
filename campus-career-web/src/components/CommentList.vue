@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { commentApi, type PostComment } from '@/api/comment'
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const likeLoadingMap = reactive<Record<number, boolean>>({})
 
 async function handleDelete(comment: PostComment) {
   try {
@@ -34,6 +36,20 @@ async function handleDelete(comment: PostComment) {
 
 function handleReply(comment: PostComment) {
   emit('reply', comment)
+}
+
+async function handleLike(comment: PostComment) {
+  if (!auth.isAuthed || likeLoadingMap[comment.id]) return
+  likeLoadingMap[comment.id] = true
+  try {
+    const resp = await commentApi.likeToggle(comment.id)
+    comment.liked = resp.liked
+    comment.likeCount = resp.likeCount
+  } catch (err: any) {
+    ElMessage.error(err?.message || '操作失败，请稍后重试')
+  } finally {
+    likeLoadingMap[comment.id] = false
+  }
 }
 </script>
 
@@ -61,10 +77,14 @@ function handleReply(comment: PostComment) {
           <div class="comment-actions">
             <el-button
               text
-              type="primary"
+              :type="item.liked ? 'primary' : 'default'"
               size="small"
-              @click="handleReply(item)"
+              :loading="!!likeLoadingMap[item.id]"
+              @click="handleLike(item)"
             >
+              👍 {{ item.liked ? '已赞' : '点赞' }} {{ item.likeCount || 0 }}
+            </el-button>
+            <el-button text type="primary" size="small" @click="handleReply(item)">
               回复
             </el-button>
             <el-button
@@ -80,7 +100,12 @@ function handleReply(comment: PostComment) {
         </div>
       </div>
       <div v-if="item.children && item.children.length" class="children">
-        <CommentList :comments="item.children" :post-id="postId" @refresh="emit('refresh')" @reply="emit('reply', $event)" />
+        <CommentList
+          :comments="item.children"
+          :post-id="postId"
+          @refresh="emit('refresh')"
+          @reply="emit('reply', $event)"
+        />
       </div>
     </div>
   </div>
