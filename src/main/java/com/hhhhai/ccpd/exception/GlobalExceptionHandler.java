@@ -17,11 +17,11 @@ public class GlobalExceptionHandler {
   public Result<?> handleBusinessException(BusinessException e, HttpServletRequest request) {
     UserContext user = UserContextHolder.getUser();
     log.warn(
-        "BUSINESS_EXCEPTION method={} uri={} userId={} username={} code={} msg={}",
+        "业务异常 请求方式={} 路径={} 用户ID={} 用户名={} 错误码={} 错误信息={}",
         request.getMethod(),
         request.getRequestURI(),
         user == null ? "-" : user.getUserId(),
-        user == null ? "anonymous" : user.getUsername(),
+        user == null ? "匿名用户" : user.getUsername(),
         e.getErrorCode().code(),
         e.getMessage());
     return Result.error(e.getErrorCode().code(), e.getErrorCode().message());
@@ -31,11 +31,11 @@ public class GlobalExceptionHandler {
   public Result<?> handleException(Exception e, HttpServletRequest request) {
     UserContext user = UserContextHolder.getUser();
     log.error(
-        "SYSTEM_EXCEPTION method={} uri={} userId={} username={}",
+        "系统异常 请求方式={} 路径={} 用户ID={} 用户名={}",
         request.getMethod(),
         request.getRequestURI(),
         user == null ? "-" : user.getUserId(),
-        user == null ? "anonymous" : user.getUsername(),
+        user == null ? "匿名用户" : user.getUsername(),
         e);
     return Result.error(ErrorCode.SYSTEM_ERROR.code(), ErrorCode.SYSTEM_ERROR.message());
   }

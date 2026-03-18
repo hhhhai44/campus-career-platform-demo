@@ -28,9 +28,9 @@ public class AuthController {
 
   @PostMapping("/login")
   public Result<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-    log.info("AUTH_LOGIN_ATTEMPT username={}", dto.getUsername());
+    log.info("用户登录尝试 用户名={}", dto.getUsername());
     LoginVO vo = authService.login(dto);
-    log.info("AUTH_LOGIN_SUCCESS username={}", dto.getUsername());
+    log.info("用户登录成功 用户名={}", dto.getUsername());
     return Result.success(vo);
   }
 
@@ -39,9 +39,9 @@ public class AuthController {
    */
   @PostMapping("/register")
   public Result<Void> register(@Valid @RequestBody RegisterDTO dto) {
-    log.info("AUTH_REGISTER_ATTEMPT username={}", dto.getUsername());
+    log.info("用户注册尝试 用户名={}", dto.getUsername());
     authService.register(dto);
-    log.info("AUTH_REGISTER_SUCCESS username={}", dto.getUsername());
+    log.info("用户注册成功 用户名={}", dto.getUsername());
     return Result.success();
   }
 }

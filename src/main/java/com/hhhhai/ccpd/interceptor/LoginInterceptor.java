@@ -16,12 +16,12 @@ public class LoginInterceptor implements HandlerInterceptor {
     UserContext user = UserContextHolder.getUser();
     if (user == null) {
       response.setStatus(401);
-      log.warn("AUTH_DENY method={} uri={} ip={} reason=unauthorized", request.getMethod(),
+      log.warn("鉴权拒绝 请求方式={} 路径={} IP={} 原因=未登录", request.getMethod(),
           request.getRequestURI(), request.getRemoteAddr());
       return false;
     }
 
-    log.debug("AUTH_PASS method={} uri={} userId={} username={}", request.getMethod(),
+    log.debug("鉴权通过 请求方式={} 路径={} 用户ID={} 用户名={}", request.getMethod(),
         request.getRequestURI(), user.getUserId(), user.getUsername());
     return true;
   }

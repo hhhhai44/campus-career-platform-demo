@@ -33,14 +33,14 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
     UserContext user = UserContextHolder.getUser();
     log.info(
-        "API_REQUEST traceId={} method={} uri={} query={} ip={} userId={} username={} ua={}",
+        "接口请求 traceId={} 请求方式={} 路径={} 查询参数={} 客户端IP={} 用户ID={} 用户名={} 用户代理={}",
         traceId,
         request.getMethod(),
         request.getRequestURI(),
         safe(request.getQueryString()),
         resolveClientIp(request),
         user == null ? "-" : user.getUserId(),
-        user == null ? "anonymous" : safe(user.getUsername()),
+        user == null ? "匿名用户" : safe(user.getUsername()),
         abbreviate(request.getHeader("User-Agent"), 120));
     return true;
   }
@@ -56,24 +56,24 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
     if (ex == null) {
       log.info(
-          "API_RESPONSE traceId={} method={} uri={} status={} durationMs={} userId={} username={}",
+          "接口响应 traceId={} 请求方式={} 路径={} 状态码={} 耗时毫秒={} 用户ID={} 用户名={}",
           safe(traceId),
           request.getMethod(),
           request.getRequestURI(),
           response.getStatus(),
           durationMs,
           user == null ? "-" : user.getUserId(),
-          user == null ? "anonymous" : safe(user.getUsername()));
+          user == null ? "匿名用户" : safe(user.getUsername()));
     } else {
       log.error(
-          "API_RESPONSE traceId={} method={} uri={} status={} durationMs={} userId={} username={} exType={} exMsg={}",
+          "接口响应异常 traceId={} 请求方式={} 路径={} 状态码={} 耗时毫秒={} 用户ID={} 用户名={} 异常类型={} 异常信息={}",
           safe(traceId),
           request.getMethod(),
           request.getRequestURI(),
           response.getStatus(),
           durationMs,
           user == null ? "-" : user.getUserId(),
-          user == null ? "anonymous" : safe(user.getUsername()),
+          user == null ? "匿名用户" : safe(user.getUsername()),
           ex.getClass().getSimpleName(),
           safe(ex.getMessage()));
     }

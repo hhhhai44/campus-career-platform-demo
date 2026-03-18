@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ApiError } from '@/api/http'
 import { resourceApi, type ResourceDetail } from '@/api/resource'
@@ -175,6 +175,11 @@ watch(
   },
   { immediate: true },
 )
+
+const showRatingCard = computed(() => {
+  if (!resource.value) return false
+  return !resource.value.owner && !resource.value.hasRated
+})
 </script>
 
 <template>
@@ -245,7 +250,7 @@ watch(
         </div>
       </el-card>
 
-      <el-card class="rate-card" shadow="never">
+      <el-card v-if="showRatingCard" class="rate-card" shadow="never">
         <div class="rate-title">为资源打个分吧</div>
         <el-form @submit.prevent>
           <el-form-item label="评分">

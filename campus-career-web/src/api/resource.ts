@@ -38,6 +38,8 @@ export type ResourceDetail = {
   favoriteCount: number
   liked?: boolean
   favorited?: boolean
+  owner?: boolean
+  hasRated?: boolean
   downloadCount: number
   createTime: string
 }

@@ -42,6 +42,12 @@ public class ResourceDetailVO {
   /** 当前用户是否已收藏 */
   private Boolean favorited;
 
+  /** 当前用户是否为资源上传者 */
+  private Boolean owner;
+
+  /** 当前用户是否已对该资源评分 */
+  private Boolean hasRated;
+
   private Integer downloadCount;
 
   private LocalDateTime createTime;

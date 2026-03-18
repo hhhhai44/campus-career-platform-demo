@@ -14,6 +14,7 @@ import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceFavoriteEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceLikeEntity;
+import com.hhhhai.ccpd.entity.resource.ResourceRatingEntity;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.ResourceCategoryMapper;
@@ -21,6 +22,7 @@ import com.hhhhai.ccpd.mapper.ResourceCommentMapper;
 import com.hhhhai.ccpd.mapper.ResourceFavoriteMapper;
 import com.hhhhai.ccpd.mapper.ResourceLikeMapper;
 import com.hhhhai.ccpd.mapper.ResourceMapper;
+import com.hhhhai.ccpd.mapper.ResourceRatingMapper;
 import com.hhhhai.ccpd.mapper.UserMapper;
 import com.hhhhai.ccpd.service.ResourceService;
 import com.hhhhai.ccpd.vo.forum.FavoriteToggleVO;
@@ -58,6 +60,9 @@ public class ResourceServiceImpl implements ResourceService {
 
   @Resource
   private ResourceFavoriteMapper resourceFavoriteMapper;
+
+  @Resource
+  private ResourceRatingMapper resourceRatingMapper;
 
   @Resource
   private UserMapper userMapper;
@@ -185,17 +190,27 @@ public class ResourceServiceImpl implements ResourceService {
 
     vo.setLiked(false);
     vo.setFavorited(false);
+    vo.setOwner(false);
+    vo.setHasRated(false);
     UserContext user = UserContextHolder.getUser();
     if (user != null && user.getUserId() != null) {
+      Long currentUserId = user.getUserId();
+      vo.setOwner(entity.getUploaderId() != null && entity.getUploaderId().equals(currentUserId));
+
       LambdaQueryWrapper<ResourceLikeEntity> likeWrapper = new LambdaQueryWrapper<>();
       likeWrapper.eq(ResourceLikeEntity::getResourceId, resourceId)
-          .eq(ResourceLikeEntity::getUserId, user.getUserId());
+          .eq(ResourceLikeEntity::getUserId, currentUserId);
       vo.setLiked(resourceLikeMapper.selectCount(likeWrapper) > 0);
 
       LambdaQueryWrapper<ResourceFavoriteEntity> favoriteWrapper = new LambdaQueryWrapper<>();
       favoriteWrapper.eq(ResourceFavoriteEntity::getResourceId, resourceId)
-          .eq(ResourceFavoriteEntity::getUserId, user.getUserId());
+          .eq(ResourceFavoriteEntity::getUserId, currentUserId);
       vo.setFavorited(resourceFavoriteMapper.selectCount(favoriteWrapper) > 0);
+
+      LambdaQueryWrapper<ResourceRatingEntity> ratingWrapper = new LambdaQueryWrapper<>();
+      ratingWrapper.eq(ResourceRatingEntity::getResourceId, resourceId)
+          .eq(ResourceRatingEntity::getUserId, currentUserId);
+      vo.setHasRated(resourceRatingMapper.selectCount(ratingWrapper) > 0);
     }
 
     return vo;

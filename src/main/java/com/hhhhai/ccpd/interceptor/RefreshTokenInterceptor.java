@@ -1,20 +1,18 @@
 package com.hhhhai.ccpd.interceptor;
 
-
-
 import static com.hhhhai.ccpd.common.constant.RedisConstants.LOGIN_USER_KEY;
 
 import cn.hutool.core.util.StrUtil;
+import com.hhhhai.ccpd.common.config.JwtProperties;
+import com.hhhhai.ccpd.common.context.UserContext;
+import com.hhhhai.ccpd.common.context.UserContextHolder;
+import com.hhhhai.ccpd.security.token.JwtTokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import com.hhhhai.ccpd.common.context.UserContext;
-import com.hhhhai.ccpd.common.context.UserContextHolder;
-import com.hhhhai.ccpd.common.config.JwtProperties;
-import com.hhhhai.ccpd.security.token.JwtTokenService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -56,36 +54,36 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
       // 注意：即使token过期，getJtiFromToken也能获取jti
       String jti = jwtTokenService.getJtiFromToken(token);
       String redisKey = LOGIN_USER_KEY + jti;
-      
+
       // 3.尝试解析token获取用户上下文
       UserContext context;
       try {
         context = jwtTokenService.parseToken(token);
       } catch (ExpiredJwtException e) {
         // token已过期，清理Redis中的登录态
-        log.debug("token已过期，清理Redis key: {}", redisKey);
+        log.debug("令牌已过期，清理 Redis 键: {}", redisKey);
         jwtTokenService.removeLoginState(jti);
         return true;
       }
-      
+
       // 4.判断Redis中是否存在该登录态
       if (!stringRedisTemplate.hasKey(redisKey)) {
         return true;
       }
-      
+
       // 5.将用户信息保存到ThreadLocal
       UserContextHolder.saveUser(context);
-      log.debug("TOKEN_CONTEXT_RESTORED userId={} username={} uri={}", context.getUserId(),
+      log.debug("已恢复令牌上下文 用户ID={} 用户名={} 路径={}", context.getUserId(),
           context.getUsername(), request.getRequestURI());
 
       // 6.刷新token有效期（使用配置的ttl，而不是硬编码的常量）
       stringRedisTemplate.expire(redisKey, jwtProperties.getTtl(), TimeUnit.SECONDS);
     } catch (Exception e) {
       // token解析失败（格式错误、签名错误等），不拦截，让后续拦截器处理
-      log.debug("token解析失败 uri={} err={}", request.getRequestURI(), e.getMessage());
+      log.debug("令牌解析失败 路径={} 错误={}", request.getRequestURI(), e.getMessage());
       return true;
     }
-    
+
     return true;
   }
 

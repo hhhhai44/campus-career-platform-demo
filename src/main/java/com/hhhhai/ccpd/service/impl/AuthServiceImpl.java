@@ -33,7 +33,7 @@ public class AuthServiceImpl implements AuthService {
   public LoginVO login(LoginDTO request) {
     String username = request.getUsername();
 
-    log.debug("登录请求: {}", request);
+    log.debug("登录请求参数: {}", request);
     // 2. 查用户
     UserEntity user = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
         .eq(UserEntity::getUsername, username));
@@ -41,16 +41,16 @@ public class AuthServiceImpl implements AuthService {
     if(user == null){
       throw new BusinessException(ErrorCode.USER_NOT_FOUND);
     }
-    log.debug("用户信息: {}", user);
+    log.debug("查询到用户信息: {}", user);
 
     // 4. 校验密码
-    log.debug("校验密码");
+    log.debug("开始校验密码");
     if (!passwordEncoder.matches(user.getPassword(), request.getPassword())) {
       throw new BusinessException(ErrorCode.PASSWORD_ERROR);
     }
 
     // 5. 生成 token
-    log.debug("生成 token");
+    log.debug("开始生成令牌");
     String token = tokenService.generateToken(user);
 
     // 6. 返回用例结果
