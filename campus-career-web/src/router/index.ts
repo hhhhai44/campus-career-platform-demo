@@ -10,38 +10,110 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import MainLayout from '@/layout/MainLayout.vue'
+
+type ViewLoader = () => Promise<unknown>
+
+const loadMainLayout: ViewLoader = () => import('@/layout/MainLayout.vue')
+const loadHomeView: ViewLoader = () => import('@/views/HomeView.vue')
+const loadPostListView: ViewLoader = () => import('@/views/forum/PostList.vue')
+const loadPostDetailView: ViewLoader = () => import('@/views/forum/PostDetail.vue')
+const loadResourceListView: ViewLoader = () => import('@/views/resource/ResourceList.vue')
+const loadResourceDetailView: ViewLoader = () => import('@/views/resource/ResourceDetail.vue')
+const loadQwenChatView: ViewLoader = () => import('@/views/QwenChat.vue')
+const loadUploadView: ViewLoader = () => import('@/views/UploadCenter.vue')
+const loadNotificationView: ViewLoader = () => import('@/views/NotificationView.vue')
+const loadMeCenterView: ViewLoader = () => import('@/views/MeCenter.vue')
+const loadLoginView: ViewLoader = () => import('@/views/LoginView.vue')
+const loadRegisterView: ViewLoader = () => import('@/views/RegisterView.vue')
+
+const loadersByRouteName: Record<string, ViewLoader> = {
+  home: loadHomeView,
+  'forum-list': loadPostListView,
+  'forum-detail': loadPostDetailView,
+  'resource-list': loadResourceListView,
+  'resource-detail': loadResourceDetailView,
+  'smart-qa': loadQwenChatView,
+  upload: loadUploadView,
+  notification: loadNotificationView,
+  me: loadMeCenterView,
+  login: loadLoginView,
+  register: loadRegisterView,
+}
+
+const prefetchPlan: Record<string, string[]> = {
+  home: ['forum-list', 'resource-list', 'smart-qa'],
+  'forum-list': ['forum-detail', 'resource-list'],
+  'resource-list': ['resource-detail', 'forum-list'],
+  'smart-qa': ['resource-list', 'forum-list'],
+}
+
+const prefetchedRoutes = new Set<string>()
+
+function runWhenIdle(task: () => void) {
+  if (typeof window === 'undefined') return
+  const w = window as Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+  }
+  if (typeof w.requestIdleCallback === 'function') {
+    w.requestIdleCallback(() => task(), { timeout: 1000 })
+    return
+  }
+  window.setTimeout(task, 180)
+}
+
+function prefetchRoutes(routeNames: string[]) {
+  for (const routeName of routeNames) {
+    if (prefetchedRoutes.has(routeName)) continue
+    const loader = loadersByRouteName[routeName]
+    if (!loader) continue
+    prefetchedRoutes.add(routeName)
+    runWhenIdle(() => {
+      void loader().catch(() => {
+        prefetchedRoutes.delete(routeName)
+      })
+    })
+  }
+}
+
+function supportsSmoothScroll() {
+  if (typeof document === 'undefined') return false
+  return 'scrollBehavior' in document.documentElement.style
+}
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: MainLayout,
+    component: loadMainLayout,
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
         name: 'home',
-        component: () => import('@/views/HomeView.vue'),
+        component: loadHomeView,
+        meta: { keepAlive: true },
       },
       {
         path: 'forum',
         name: 'forum-list',
-        component: () => import('@/views/forum/PostList.vue'),
+        component: loadPostListView,
+        meta: { keepAlive: true },
       },
       {
         path: 'forum/:id',
         name: 'forum-detail',
-        component: () => import('@/views/forum/PostDetail.vue'),
+        component: loadPostDetailView,
       },
       {
         path: 'resource',
         name: 'resource-list',
-        component: () => import('@/views/resource/ResourceList.vue'),
+        component: loadResourceListView,
+        meta: { keepAlive: true },
       },
       {
         path: 'qa',
         name: 'smart-qa',
-        component: () => import('@/views/QwenChat.vue'),
+        component: loadQwenChatView,
+        meta: { keepAlive: true },
       },
       {
         path: 'qwen',
@@ -51,35 +123,35 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'resource/:id',
         name: 'resource-detail',
-        component: () => import('@/views/resource/ResourceDetail.vue'),
+        component: loadResourceDetailView,
       },
       {
         path: 'upload',
         name: 'upload',
-        component: () => import('@/views/UploadCenter.vue'),
+        component: loadUploadView,
       },
       {
         path: 'notification',
         name: 'notification',
-        component: () => import('@/views/NotificationView.vue'),
+        component: loadNotificationView,
       },
       {
         path: 'me',
         name: 'me',
-        component: () => import('@/views/MeCenter.vue'),
+        component: loadMeCenterView,
       },
     ],
   },
   {
     path: '/login',
     name: 'login',
-    component: () => import('@/views/LoginView.vue'),
+    component: loadLoginView,
     meta: { requiresAuth: false },
   },
   {
     path: '/register',
     name: 'register',
-    component: () => import('@/views/RegisterView.vue'),
+    component: loadRegisterView,
     meta: { requiresAuth: false },
   },
 ]
@@ -87,6 +159,14 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return {
+      left: 0,
+      top: 0,
+      behavior: supportsSmoothScroll() ? 'smooth' : 'auto',
+    }
+  },
 })
 
 router.beforeEach((to) => {
@@ -98,6 +178,14 @@ router.beforeEach((to) => {
     return { name: 'home' }
   }
   return true
+})
+
+router.afterEach((to) => {
+  const routeName = typeof to.name === 'string' ? to.name : ''
+  const nextLikelyRoutes = prefetchPlan[routeName]
+  if (nextLikelyRoutes) {
+    prefetchRoutes(nextLikelyRoutes)
+  }
 })
 
 export default router

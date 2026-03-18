@@ -9,7 +9,5 @@ public interface QwenChatService {
 
   QwenAskResponse streamAsk(String question, Consumer<String> onDelta);
 
-  // TODO(Agent): 后续可扩展为多轮对话接口（messages/history），并加入会话记忆（sessionId -> messages）
+  // TODO(Agent): 后续可扩展为多轮对话接口（messages/history），并加入 session memory、RAG 与工具调用。
 }
-
-

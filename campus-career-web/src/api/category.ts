@@ -9,11 +9,10 @@ export type CategoryItem = {
 export const categoryApi = {
   /** 帖子分类：GET /forum/category/list */
   list() {
-    return getJson<CategoryItem[]>('/forum/category/list')
+    return getJson<CategoryItem[]>('/forum/category/list', { cacheTtlMs: 5 * 60 * 1000 })
   },
   /** 资源分类：GET /resource/category/list */
   resourceList() {
-    return getJson<CategoryItem[]>('/resource/category/list')
+    return getJson<CategoryItem[]>('/resource/category/list', { cacheTtlMs: 5 * 60 * 1000 })
   },
 }
-

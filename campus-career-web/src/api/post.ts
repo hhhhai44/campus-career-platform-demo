@@ -72,7 +72,7 @@ export const postApi = {
 
   // GET /forum/post/{id}
   detail(id: number) {
-    return getJson<PostDetail>(`/forum/post/${id}`)
+    return getJson<PostDetail>(`/forum/post/${id}`, { cacheTtlMs: 30 * 1000 })
   },
 
   // DELETE /forum/post/{id}
@@ -84,6 +84,7 @@ export const postApi = {
   myPosts(page: number, size: number) {
     return getJson<PageResult<PostListItem>>('/forum/post/my', {
       params: { page, size },
+      cacheTtlMs: 15 * 1000,
     })
   },
 }

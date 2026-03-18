@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import { ApiError } from '@/api/http'
 import { resourceApi, type ResourceDetail } from '@/api/resource'
 import { ratingApi } from '@/api/rating'
 import { resourceCommentApi, type ResourceComment } from '@/api/resourceComment'
-import ResourceCommentList from '@/components/ResourceCommentList.vue'
+
+const ResourceCommentList = defineAsyncComponent(() => import('@/components/ResourceCommentList.vue'))
 
 const route = useRoute()
 
@@ -24,34 +25,46 @@ const replyingTo = ref<ResourceComment | null>(null)
 
 const likeLoading = ref(false)
 const favoriteLoading = ref(false)
+let detailRequestSeq = 0
+let commentRequestSeq = 0
 
 async function fetchDetail(id: number) {
+  const requestSeq = ++detailRequestSeq
   loading.value = true
   try {
     const detail = await resourceApi.detail(id)
+    if (requestSeq !== detailRequestSeq) return
     resource.value = {
       ...detail,
       liked: !!detail.liked,
       favorited: !!detail.favorited,
     }
   } catch {
+    if (requestSeq !== detailRequestSeq) return
     ElMessage.error('资源详情加载失败，请稍后重试')
     resource.value = null
   } finally {
-    loading.value = false
+    if (requestSeq === detailRequestSeq) {
+      loading.value = false
+    }
   }
 }
 
 async function fetchComments(resourceId: number) {
+  const requestSeq = ++commentRequestSeq
   loadingComments.value = true
   try {
     const page = await resourceCommentApi.page(resourceId, 1, 20)
+    if (requestSeq !== commentRequestSeq) return
     comments.value = page.records
   } catch {
+    if (requestSeq !== commentRequestSeq) return
     comments.value = []
     ElMessage.error('评论加载失败，请稍后重试')
   } finally {
-    loadingComments.value = false
+    if (requestSeq === commentRequestSeq) {
+      loadingComments.value = false
+    }
   }
 }
 

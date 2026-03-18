@@ -21,12 +21,59 @@ type HttpConfig = {
   getToken?: () => string | null
 }
 
+export type HttpRequestConfig = AxiosRequestConfig & {
+  cacheTtlMs?: number
+  cacheKey?: string
+  forceRefresh?: boolean
+  dedupe?: boolean
+}
+
+type CachedPayload = {
+  expiresAt: number
+  data: unknown
+}
+
 const defaultConfig: Required<HttpConfig> = {
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
   getToken: () => null,
 }
 
 let axiosInstance: AxiosInstance | null = null
+
+const getResponseCache = new Map<string, CachedPayload>()
+const inflightGetRequests = new Map<string, Promise<unknown>>()
+
+function toStableString(value: unknown) {
+  try {
+    return JSON.stringify(value ?? null)
+  } catch {
+    return String(value)
+  }
+}
+
+function buildGetRequestKey(path: string, config?: HttpRequestConfig) {
+  if (config?.cacheKey) return config.cacheKey
+  return `${path}::${toStableString(config?.params)}`
+}
+
+function stripHttpEnhancers(config?: HttpRequestConfig): AxiosRequestConfig | undefined {
+  if (!config) return undefined
+  const { cacheTtlMs, cacheKey, forceRefresh, dedupe, ...axiosConfig } = config
+  return axiosConfig
+}
+
+function cleanupExpiredCacheEntries() {
+  const now = Date.now()
+  for (const [key, cacheItem] of getResponseCache.entries()) {
+    if (cacheItem.expiresAt <= now) {
+      getResponseCache.delete(key)
+    }
+  }
+}
+
+export function clearHttpGetCache() {
+  getResponseCache.clear()
+}
 
 function getAxios(): AxiosInstance {
   if (axiosInstance) return axiosInstance
@@ -143,18 +190,65 @@ async function encryptPasswordFields<T>(input: T): Promise<T> {
   return target as T
 }
 
-export async function getJson<T>(path: string, config?: AxiosRequestConfig) {
-  const res = await getAxios().get<ApiResult<T>>(path, config)
-  return res.data.data as T
+export async function getJson<T>(path: string, config?: HttpRequestConfig): Promise<T> {
+  const requestKey = buildGetRequestKey(path, config)
+  const cacheTtlMs = Math.max(0, config?.cacheTtlMs ?? 0)
+  const shouldDedupe = config?.dedupe !== false
+
+  if (config?.forceRefresh) {
+    getResponseCache.delete(requestKey)
+  }
+
+  if (cacheTtlMs > 0) {
+    cleanupExpiredCacheEntries()
+    const cached = getResponseCache.get(requestKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data as T
+    }
+  }
+
+  if (shouldDedupe) {
+    const inflight = inflightGetRequests.get(requestKey)
+    if (inflight) {
+      return inflight as Promise<T>
+    }
+  }
+
+  const axiosConfig = stripHttpEnhancers(config)
+  const request = (async () => {
+    const res = await getAxios().get<ApiResult<T>>(path, axiosConfig)
+    const data = res.data.data as T
+    if (cacheTtlMs > 0) {
+      getResponseCache.set(requestKey, {
+        data,
+        expiresAt: Date.now() + cacheTtlMs,
+      })
+    }
+    return data
+  })()
+
+  if (shouldDedupe) {
+    inflightGetRequests.set(requestKey, request as Promise<unknown>)
+  }
+
+  try {
+    return await request
+  } finally {
+    if (shouldDedupe) {
+      inflightGetRequests.delete(requestKey)
+    }
+  }
 }
 
 export async function postJson<TResp, TReq>(path: string, body?: TReq, config?: AxiosRequestConfig) {
   const res = await getAxios().post<ApiResult<TResp>>(path, body, config)
+  clearHttpGetCache()
   return res.data.data as TResp
 }
 
 export async function putJson<TResp, TReq>(path: string, body?: TReq, config?: AxiosRequestConfig) {
   const res = await getAxios().put<ApiResult<TResp>>(path, body, config)
+  clearHttpGetCache()
   return res.data.data as TResp
 }
 
@@ -163,6 +257,7 @@ export async function deleteJson<TResp = void>(
   config?: AxiosRequestConfig,
 ): Promise<TResp> {
   const res = await getAxios().delete<ApiResult<TResp>>(path, config)
+  clearHttpGetCache()
   const payload = res.data
   return (payload.data as TResp | undefined) as TResp
 }

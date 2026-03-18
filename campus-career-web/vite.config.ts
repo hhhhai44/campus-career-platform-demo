@@ -20,6 +20,25 @@ export default defineConfig({
     vue(),
     //vueDevTools(),
   ],
+  build: {
+    cssCodeSplit: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('element-plus')) return 'vendor-element-plus'
+          if (id.includes('markdown-it') || id.includes('dompurify')) return 'vendor-qa'
+          if (id.includes('vue-router')) return 'vendor-router'
+          if (id.includes('pinia')) return 'vendor-store'
+          if (id.includes('/vue/') || id.includes('vue@')) return 'vendor-vue'
+          return 'vendor'
+        },
+      },
+    },
+  },
+  optimizeDeps: {
+    include: ['axios', 'pinia', 'vue', 'vue-router'],
+  },
   /**
    * 本地开发代理：
    * - 前端请求 `/api/**` 会被代理到后端（默认 8081）

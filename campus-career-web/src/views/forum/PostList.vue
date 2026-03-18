@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { defineAsyncComponent, onActivated, onMounted, ref } from 'vue'
 import { categoryApi, type CategoryItem } from '@/api/category'
 import { postApi, type PageResult, type PostListItem } from '@/api/post'
-import PostCard from '@/components/PostCard.vue'
+
+const PostCard = defineAsyncComponent(() => import('@/components/PostCard.vue'))
 
 const posts = ref<PostListItem[]>([])
 const categories = ref<CategoryItem[]>([])
@@ -15,17 +16,28 @@ const activeCategoryId = ref<number | null>(null)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
+const lastLoadedAt = ref(0)
+
+let categoryRequestSeq = 0
+let postRequestSeq = 0
+const STALE_REFRESH_MS = 45 * 1000
 
 async function fetchCategories() {
+  const requestSeq = ++categoryRequestSeq
   loadingCategory.value = true
   try {
-    categories.value = await categoryApi.list()
+    const response = await categoryApi.list()
+    if (requestSeq !== categoryRequestSeq) return
+    categories.value = response
   } finally {
-    loadingCategory.value = false
+    if (requestSeq === categoryRequestSeq) {
+      loadingCategory.value = false
+    }
   }
 }
 
 async function fetchPosts() {
+  const requestSeq = ++postRequestSeq
   loading.value = true
   try {
     const resp: PageResult<PostListItem> = await postApi.page({
@@ -34,10 +46,14 @@ async function fetchPosts() {
       keyword: keyword.value || null,
       categoryId: activeCategoryId.value,
     })
+    if (requestSeq !== postRequestSeq) return
     posts.value = resp.records
     total.value = resp.total
+    lastLoadedAt.value = Date.now()
   } finally {
-    loading.value = false
+    if (requestSeq === postRequestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -60,6 +76,12 @@ function handlePageChange(p: number) {
 onMounted(() => {
   fetchCategories()
   fetchPosts()
+})
+
+onActivated(() => {
+  if (Date.now() - lastLoadedAt.value > STALE_REFRESH_MS) {
+    fetchPosts()
+  }
 })
 </script>
 
@@ -190,6 +212,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.list > * {
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
 }
 
 .empty-text {

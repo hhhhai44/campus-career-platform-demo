@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { defineAsyncComponent, onActivated, onMounted, ref } from 'vue'
 import { resourceApi, type PageResult, type ResourceListItem } from '@/api/resource'
 import { categoryApi, type CategoryItem } from '@/api/category'
-import ResourceCard from '@/components/ResourceCard.vue'
+
+const ResourceCard = defineAsyncComponent(() => import('@/components/ResourceCard.vue'))
 
 const resources = ref<ResourceListItem[]>([])
 const categories = ref<CategoryItem[]>([])
@@ -15,17 +16,28 @@ const activeCategoryId = ref<number | null>(null)
 const page = ref(1)
 const size = ref(12)
 const total = ref(0)
+const lastLoadedAt = ref(0)
+
+let categoryRequestSeq = 0
+let resourceRequestSeq = 0
+const STALE_REFRESH_MS = 45 * 1000
 
 async function fetchCategories() {
+  const requestSeq = ++categoryRequestSeq
   loadingCategory.value = true
   try {
-    categories.value = await categoryApi.resourceList()
+    const response = await categoryApi.resourceList()
+    if (requestSeq !== categoryRequestSeq) return
+    categories.value = response
   } finally {
-    loadingCategory.value = false
+    if (requestSeq === categoryRequestSeq) {
+      loadingCategory.value = false
+    }
   }
 }
 
 async function fetchResources() {
+  const requestSeq = ++resourceRequestSeq
   loading.value = true
   try {
     const resp: PageResult<ResourceListItem> = await resourceApi.page({
@@ -34,10 +46,14 @@ async function fetchResources() {
       keyword: keyword.value || null,
       categoryId: activeCategoryId.value,
     })
+    if (requestSeq !== resourceRequestSeq) return
     resources.value = resp.records
     total.value = resp.total
+    lastLoadedAt.value = Date.now()
   } finally {
-    loading.value = false
+    if (requestSeq === resourceRequestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -60,6 +76,12 @@ function handlePageChange(p: number) {
 onMounted(() => {
   fetchCategories()
   fetchResources()
+})
+
+onActivated(() => {
+  if (Date.now() - lastLoadedAt.value > STALE_REFRESH_MS) {
+    fetchResources()
+  }
 })
 </script>
 
@@ -190,6 +212,11 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
+}
+
+.grid > * {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px;
 }
 
 .empty-text {

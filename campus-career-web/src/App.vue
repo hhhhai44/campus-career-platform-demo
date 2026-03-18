@@ -9,8 +9,21 @@
 </script>
 
 <template>
-  <!-- 根容器：路由页面渲染出口 -->
-  <router-view />
+  <router-view v-slot="{ Component, route }">
+    <transition name="route-fade" mode="out-in">
+      <keep-alive v-if="route.meta?.keepAlive">
+        <component
+          :is="Component"
+          :key="String(route.name ?? route.path)"
+        />
+      </keep-alive>
+      <component
+        :is="Component"
+        v-else
+        :key="route.fullPath"
+      />
+    </transition>
+  </router-view>
 </template>
 
 <style>
@@ -22,5 +35,52 @@ body {
   background: var(--ccp-page-bg);
   color: var(--ccp-text);
   -webkit-font-smoothing: antialiased;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--ccp-primary);
+  outline-offset: 2px;
+}
+
+.route-fade-enter-active,
+.route-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.route-fade-enter-from,
+.route-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .route-fade-enter-active,
+  .route-fade-leave-active {
+    transition: none;
+  }
 }
 </style>

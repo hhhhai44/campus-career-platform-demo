@@ -21,10 +21,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 千问问答接口（最小可用）。
+ * 智能问答接口（保留现有路径兼容前端）。
  *
- * <p>路径建议保持独立：/qwen/**，避免与论坛/资源模块耦合。</p>
- * <p>TODO(Agent): 后续可新增 /qwen/chat（多轮）、/qwen/agent（工具/知识库代理）、/qwen/knowledge-base（知识库管理）等。</p>
+ * <p>当前仍使用 /qwen/** 路径以避免影响既有调用；后续可通过网关或版本路由平滑迁移。</p>
  */
 @Slf4j
 @RestController
@@ -38,7 +37,7 @@ public class QwenController {
   @PostMapping("/ask")
   public Result<QwenAskResponse> ask(@Valid @RequestBody QwenAskRequest req) {
     if (!StringUtils.hasText(properties.getApiKey())) {
-      return Result.error("未配置千问 API Key：请设置环境变量 DASHSCOPE_API_KEY（或 CCPD_QWEN_API_KEY）");
+      return Result.error("未配置智能问答 API Key：请设置环境变量 DASHSCOPE_API_KEY（或 CCPD_QWEN_API_KEY）");
     }
     QwenAskResponse resp = qwenChatService.ask(req.getQuestion());
     return Result.success(resp);
@@ -49,7 +48,7 @@ public class QwenController {
     SseEmitter emitter = new SseEmitter(0L);
 
     if (!StringUtils.hasText(properties.getApiKey())) {
-      sendEvent(emitter, "error", "未配置千问 API Key：请设置环境变量 DASHSCOPE_API_KEY（或 CCPD_QWEN_API_KEY）");
+      sendEvent(emitter, "error", "未配置智能问答 API Key：请设置环境变量 DASHSCOPE_API_KEY（或 CCPD_QWEN_API_KEY）");
       emitter.complete();
       return emitter;
     }
@@ -62,7 +61,7 @@ public class QwenController {
         emitter.complete();
       } catch (Exception e) {
         log.error("流式问答失败", e);
-        sendEvent(emitter, "error", "调用千问失败，请稍后重试");
+        sendEvent(emitter, "error", "调用智能问答服务失败，请稍后重试");
         emitter.complete();
       }
     });

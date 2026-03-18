@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, defineAsyncComponent } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { postApi, type PostDetail } from '@/api/post'
 import { commentApi, type PostComment } from '@/api/comment'
 import { interactionApi } from '@/api/interaction'
-import CommentList from '@/components/CommentList.vue'
+
+const CommentList = defineAsyncComponent(() => import('@/components/CommentList.vue'))
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -15,7 +16,7 @@ const isMyPost = computed(() => {
   if (!post.value || !auth.isAuthed) {
     return false
   }
-  return post.value.currentUserId != null 
+  return post.value.currentUserId != null
     && post.value.authorId === post.value.currentUserId
 })
 
@@ -29,34 +30,46 @@ const likeLoading = ref(false)
 const favoriteLoading = ref(false)
 const replyingTo = ref<PostComment | null>(null)
 const deleteLoading = ref(false)
+let postRequestSeq = 0
+let commentRequestSeq = 0
 
 async function fetchPost(id: number) {
+  const requestSeq = ++postRequestSeq
   loadingPost.value = true
   try {
     const detail = await postApi.detail(id)
+    if (requestSeq !== postRequestSeq) return
     post.value = {
       ...detail,
       liked: !!detail.liked,
       favorited: !!detail.favorited,
     }
   } catch {
+    if (requestSeq !== postRequestSeq) return
     ElMessage.error('帖子加载失败，请稍后重试')
     post.value = null
   } finally {
-    loadingPost.value = false
+    if (requestSeq === postRequestSeq) {
+      loadingPost.value = false
+    }
   }
 }
 
 async function fetchComments(id: number) {
+  const requestSeq = ++commentRequestSeq
   loadingComments.value = true
   try {
     const page = await commentApi.page(id, 1, 20)
+    if (requestSeq !== commentRequestSeq) return
     comments.value = page.records
   } catch {
+    if (requestSeq !== commentRequestSeq) return
     ElMessage.error('评论加载失败，请稍后重试')
     comments.value = []
   } finally {
-    loadingComments.value = false
+    if (requestSeq === commentRequestSeq) {
+      loadingComments.value = false
+    }
   }
 }
 

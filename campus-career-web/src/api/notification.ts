@@ -50,7 +50,6 @@ export const notificationApi = {
 
   // GET /notification/unread/count
   unreadCount() {
-    return getJson<number>('/notification/unread/count')
+    return getJson<number>('/notification/unread/count', { cacheTtlMs: 10 * 1000 })
   },
 }
-

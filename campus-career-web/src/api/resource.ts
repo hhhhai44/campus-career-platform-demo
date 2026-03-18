@@ -65,7 +65,7 @@ export const resourceApi = {
 
   // GET /resource/{id}
   detail(id: number) {
-    return getJson<ResourceDetail>(`/resource/${id}`)
+    return getJson<ResourceDetail>(`/resource/${id}`, { cacheTtlMs: 30 * 1000 })
   },
 
   // POST /resource/{id}/like/toggle

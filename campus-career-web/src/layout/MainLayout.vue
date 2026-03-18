@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 
@@ -112,7 +112,21 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
 
     <main class="main">
       <div class="main-inner">
-        <router-view />
+        <RouterView v-slot="{ Component, route: childRoute }">
+          <transition name="page-slide" mode="out-in">
+            <keep-alive v-if="childRoute.meta?.keepAlive">
+              <component
+                :is="Component"
+                :key="String(childRoute.name ?? childRoute.path)"
+              />
+            </keep-alive>
+            <component
+              :is="Component"
+              v-else
+              :key="childRoute.fullPath"
+            />
+          </transition>
+        </RouterView>
       </div>
     </main>
   </div>
@@ -195,6 +209,7 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
     background 0.15s ease,
     color 0.15s ease,
     transform 0.1s ease;
+  will-change: transform;
 }
 
 .nav-item:hover {
@@ -219,6 +234,12 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   background: transparent;
   cursor: pointer;
   padding: 4px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
 }
 
 .bell {
@@ -253,6 +274,12 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   font-size: 12px;
   color: var(--ccp-text-secondary);
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.logout:hover {
+  background: #eef2ff;
+  color: var(--ccp-text);
 }
 
 .main {
@@ -263,6 +290,24 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
 .main-inner {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.page-slide-enter-active,
+.page-slide-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.page-slide-enter-from,
+.page-slide-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-slide-enter-active,
+  .page-slide-leave-active {
+    transition: none;
+  }
 }
 
 @media (max-width: 768px) {
