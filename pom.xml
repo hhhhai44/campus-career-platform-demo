@@ -107,6 +107,21 @@
       <artifactId>lombok</artifactId>
       <optional>true</optional>
     </dependency>
+
+    <!-- Qwen / DashScope SDK -->
+    <!-- TODO(Qwen): 后续请关注 DashScope Java SDK 版本更新，按需升级并验证兼容性 -->
+    <dependency>
+      <groupId>com.alibaba</groupId>
+      <artifactId>dashscope-sdk-java</artifactId>
+      <version>2.13.0</version>
+      <exclusions>
+        <!-- 避免引入 slf4j-simple 与 Spring Boot 默认日志实现冲突 -->
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>

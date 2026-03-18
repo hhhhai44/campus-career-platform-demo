@@ -39,6 +39,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/resource/ResourceList.vue'),
       },
       {
+        path: 'qa',
+        name: 'smart-qa',
+        component: () => import('@/views/QwenChat.vue'),
+      },
+      {
+        path: 'qwen',
+        name: 'qwen-chat',
+        redirect: { name: 'smart-qa' },
+      },
+      {
         path: 'resource/:id',
         name: 'resource-detail',
         component: () => import('@/views/resource/ResourceDetail.vue'),

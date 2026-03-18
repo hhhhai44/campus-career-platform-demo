@@ -15,6 +15,7 @@ const navItems = [
   { label: '首页', path: '/', name: 'home' },
   { label: '论坛', path: '/forum', name: 'forum-list' },
   { label: '资源库', path: '/resource', name: 'resource-list' },
+  { label: '学涯助手', path: '/qa', name: 'smart-qa' },
   { label: '上传', path: '/upload', name: 'upload' },
   { label: '我的', path: '/me', name: 'me' },
 ]
@@ -22,6 +23,7 @@ const navItems = [
 const activePath = computed(() => {
   if (route.path.startsWith('/forum')) return '/forum'
   if (route.path.startsWith('/resource')) return '/resource'
+  if (route.path.startsWith('/qa') || route.path.startsWith('/qwen')) return '/qa'
   if (route.path.startsWith('/upload')) return '/upload'
   if (route.path.startsWith('/me')) return '/me'
   return '/'
