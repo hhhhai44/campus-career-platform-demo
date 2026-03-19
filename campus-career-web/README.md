@@ -1,12 +1,9 @@
 # campus-career-web
 
-基于 **Vue 3 + Vite + TypeScript** 的前端工程模板，内置：
+基于 **Vue 3 + Vite + TypeScript** 的前端项目，内置：
 - Vue Router（路由）
 - Pinia（状态管理）
 - ESLint/Prettier/Oxlint（代码质量与格式化）
-
-更多“每个文件/文件夹的作用”和“哪些可删除”的说明见：
-- `docs/项目结构说明.md`
 
 ## 环境要求
 
@@ -25,7 +22,7 @@ npm install
 npm run dev
 ```
 
-### 联调后端登录接口（重要）
+### 联调后端登录接口
 
 本前端默认通过 Vite 代理把 `/api/**` 转发到后端：
 - 后端默认端口：`8081`

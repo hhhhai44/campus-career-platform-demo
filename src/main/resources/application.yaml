@@ -34,14 +34,13 @@ spring:
 
 ccpd:
   qwen:
-    # TODO(Qwen): 填充你的 DashScope API Key（建议通过环境变量注入，不要写入仓库）
-    # 例如：在系统环境变量中配置 CCPD_QWEN_API_KEY=xxxx
+    #  API Key
     api-key: ${ccpd.qwen.api-key}
-    # TODO(Qwen): 如需切换地域/私有化网关，可配置 Base URL（当前版本 SDK 可能无需手动设置）
+    # 网关地址
     base-url: ${ccpd.qwen.base-url}
-#    # TODO(Qwen): 模型可按需切换，如 qwen-plus / qwen-turbo 等
+#    # 模型可按需切换，如 qwen-plus / qwen-turbo
 #    model: ${ccpd.qwen.model}
-#    # TODO(Qwen): 后续可将 system prompt 做成可配置项，结合论坛场景进行角色定制
+#    # 系统提示词可通过环境变量覆盖
 #    system-prompt: ${CCPD_QWEN_SYSTEM_PROMPT:你是一个专业且友好的校园职涯问答助手。}
 #  cloud:
 #    sentinel:

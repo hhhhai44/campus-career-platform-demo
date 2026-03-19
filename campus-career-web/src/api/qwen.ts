@@ -5,7 +5,6 @@ const LS_TOKEN = 'ccp_token'
 
 export type QwenAskReq = {
   question: string
-  // TODO(Agent): 后续可扩展 sessionId/history/knowledgeBaseId 等字段
 }
 
 export type QwenAskStreamOptions = {

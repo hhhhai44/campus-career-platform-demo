@@ -1,5 +1,4 @@
--- 消息通知模块建表脚本
--- 执行前请根据需要调整库名、字符集等配置
+-- 通知模块数据库结构
 
 -- =========================
 -- 1. 消息通知表 notification
@@ -19,4 +18,3 @@ CREATE TABLE IF NOT EXISTS `notification` (
   KEY `idx_notification_user_time` (`user_id`, `create_time`),
   KEY `idx_notification_user_read` (`user_id`, `is_read`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户消息通知表';
-
