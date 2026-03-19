@@ -4,7 +4,6 @@ import com.hhhhai.ccpd.ai.qwen.config.QwenProperties;
 import com.hhhhai.ccpd.ai.qwen.dto.QwenAskRequest;
 import com.hhhhai.ccpd.ai.qwen.dto.QwenAskResponse;
 import com.hhhhai.ccpd.ai.qwen.service.QwenChatService;
-import com.hhhhai.ccpd.common.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,15 +32,6 @@ public class QwenController {
 
   private final QwenChatService qwenChatService;
   private final QwenProperties properties;
-
-  @PostMapping("/ask")
-  public Result<QwenAskResponse> ask(@Valid @RequestBody QwenAskRequest req) {
-    if (!StringUtils.hasText(properties.getApiKey())) {
-      return Result.error("未配置智能问答 API Key：请设置环境变量 DASHSCOPE_API_KEY（或 CCPD_QWEN_API_KEY）");
-    }
-    QwenAskResponse resp = qwenChatService.ask(req.getQuestion());
-    return Result.success(resp);
-  }
 
   @PostMapping(value = "/ask/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter askStream(@Valid @RequestBody QwenAskRequest req) {

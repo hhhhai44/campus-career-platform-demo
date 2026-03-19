@@ -2,23 +2,17 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
 /**
  * Vite 配置入口：
- * - plugins: Vue 编译插件、开发调试增强插件等
+ * - plugins: Vue 编译插件
  * - resolve.alias: 路径别名（这里把 `@` 指向 `src/`）
- *
- * 可选项说明：
- * - `vite-plugin-vue-devtools` 仅提升开发体验，不影响生产功能；
- *   如不需要，可从 `plugins` 中移除 `vueDevTools()` 并卸载依赖。
  *
  * 文档：https://vite.dev/config/
  */
 export default defineConfig({
   plugins: [
     vue(),
-    //vueDevTools(),
   ],
   build: {
     cssCodeSplit: true,

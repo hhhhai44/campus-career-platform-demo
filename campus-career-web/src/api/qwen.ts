@@ -1,4 +1,4 @@
-import { ApiError, postJson } from './http'
+import { ApiError } from './http'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/+$/, '')
 const LS_TOKEN = 'ccp_token'
@@ -8,12 +8,6 @@ export type QwenAskReq = {
   // TODO(Agent): 后续可扩展 sessionId/history/knowledgeBaseId 等字段
 }
 
-export type QwenAskResp = {
-  answer: string
-  model: string
-  // TODO(Agent): 后续可加入 usage、引用来源、工具调用轨迹等
-}
-
 export type QwenAskStreamOptions = {
   signal?: AbortSignal
   onDelta?: (content: string) => void
@@ -21,12 +15,8 @@ export type QwenAskStreamOptions = {
   onError?: (message: string) => void
 }
 
-export async function qwenAsk(question: string) {
-  const body: QwenAskReq = { question }
-  return await postJson<QwenAskResp, QwenAskReq>('/qwen/ask', body)
-}
-
 export async function qwenAskStream(question: string, opts: QwenAskStreamOptions = {}) {
+  const body: QwenAskReq = { question }
   const token = localStorage.getItem(LS_TOKEN)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -37,7 +27,7 @@ export async function qwenAskStream(question: string, opts: QwenAskStreamOptions
   const res = await fetch(`${API_BASE_URL}/qwen/ask/stream`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(body),
     signal: opts.signal,
   })
 

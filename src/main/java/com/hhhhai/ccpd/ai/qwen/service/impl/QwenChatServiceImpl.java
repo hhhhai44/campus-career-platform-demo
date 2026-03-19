@@ -10,7 +10,6 @@ import com.hhhhai.ccpd.ai.qwen.config.QwenProperties;
 import com.hhhhai.ccpd.ai.qwen.dto.QwenAskResponse;
 import com.hhhhai.ccpd.ai.qwen.service.QwenChatService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,25 +19,13 @@ import java.util.function.Consumer;
 
 /**
  * 智能问答 Service（兼容原有接口）。
- *
- * <p>说明：当前对外仍暴露 ask/streamAsk，内部已经迁移到 Agent 编排层，
- * 便于后续平滑扩展 Memory/RAG/Tools/Audit/Telemetry。</p>
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QwenChatServiceImpl implements QwenChatService {
 
   private final AgentChatOrchestrator orchestrator;
   private final QwenProperties properties;
-
-  @Override
-  public QwenAskResponse ask(String question) {
-    ensureApiKey();
-    AgentChatRequest request = buildSingleTurnRequest(question, false);
-    AgentChatResponse response = orchestrator.chat(request);
-    return new QwenAskResponse(response.getAnswer(), response.getModel());
-  }
 
   @Override
   public QwenAskResponse streamAsk(String question, Consumer<String> onDelta) {
