@@ -1,5 +1,5 @@
 -- 互动功能补齐迁移脚本（MySQL 8+）
--- 目标：补齐评论点赞、资源点赞/收藏相关表与字段
+-- 目标：补齐评论点赞、资源点赞/收藏相关表
 
 -- 1) post_comment_like
 CREATE TABLE IF NOT EXISTS `post_comment_like` (
@@ -42,9 +42,4 @@ CREATE TABLE IF NOT EXISTS `resource_comment_like` (
   UNIQUE KEY `uk_resource_comment_like_user` (`comment_id`, `user_id`),
   KEY `idx_resource_comment_like_user` (`user_id`, `comment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资源评论点赞记录表';
-
--- 5) 补齐 resource 表计数字段（若已有则跳过）
-ALTER TABLE `resource`
-  ADD COLUMN IF NOT EXISTS `like_count` INT DEFAULT 0 COMMENT '点赞数量',
-  ADD COLUMN IF NOT EXISTS `favorite_count` INT DEFAULT 0 COMMENT '收藏数量';
 
