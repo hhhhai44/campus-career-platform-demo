@@ -19,17 +19,17 @@ const likeLoadingMap = reactive<Record<number, boolean>>({})
 
 async function handleDelete(comment: ResourceComment) {
   try {
-    await ElMessageBox.confirm('确定要删除这条评论吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除吗？这个操作无法撤销。', '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
     await resourceCommentApi.delete(comment.id)
-    ElMessage.success('删除成功')
+    ElMessage.success('评论已删除')
     emit('refresh')
   } catch (err: any) {
     if (err !== 'cancel') {
-      ElMessage.error(err?.message || '删除失败')
+      ElMessage.error(err?.message || '删除失败，稍后再试试')
     }
   }
 }
@@ -46,7 +46,7 @@ async function handleLike(comment: ResourceComment) {
     comment.liked = resp.liked
     comment.likeCount = resp.likeCount
   } catch (err: any) {
-    ElMessage.error(err?.message || '操作失败，请稍后重试')
+    ElMessage.error(err?.message || '操作没成功，稍后再试试')
   } finally {
     likeLoadingMap[comment.id] = false
   }
@@ -55,7 +55,7 @@ async function handleLike(comment: ResourceComment) {
 
 <template>
   <div class="comment-list">
-    <div v-for="item in props.comments" :key="item.id" class="comment">
+    <div v-for="item in props.comments" :key="item.id" class="comment ccp-card">
       <div class="comment-header">
         <div class="avatar">
           {{ item.fromUserName?.slice(0, 1)?.toUpperCase() || 'U' }}
@@ -64,8 +64,7 @@ async function handleLike(comment: ResourceComment) {
           <div class="line">
             <span class="author">{{ item.fromUserName || '未知用户' }}</span>
             <span v-if="item.toUserName" class="reply-to">
-              回复
-              <span class="author">{{ item.toUserName }}</span>
+              回复 <span class="author">{{ item.toUserName }}</span>
             </span>
             <span class="time">
               {{ new Date(item.createTime).toLocaleString() }}
@@ -111,8 +110,11 @@ async function handleLike(comment: ResourceComment) {
 }
 
 .comment {
-  padding: 12px 0;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 14px 16px;
+  border: 1px solid var(--ccp-card-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
 }
 
 .comment-header {
@@ -121,10 +123,10 @@ async function handleLike(comment: ResourceComment) {
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: #111827;
+  background: var(--ccp-primary-gradient);
   color: white;
   display: flex;
   align-items: center;
@@ -143,26 +145,27 @@ async function handleLike(comment: ResourceComment) {
   gap: 8px;
   align-items: baseline;
   font-size: 12px;
+  flex-wrap: wrap;
 }
 
 .author {
-  font-weight: 600;
-  color: #374151;
+  font-weight: 700;
+  color: var(--ccp-text);
 }
 
 .reply-to {
-  color: #6b7280;
+  color: var(--ccp-text-muted);
 }
 
 .time {
   margin-left: auto;
-  color: #9ca3af;
+  color: var(--ccp-text-light);
 }
 
 .content {
   margin-top: 6px;
   font-size: 13px;
-  color: #111827;
+  color: var(--ccp-text-secondary);
   line-height: 1.6;
 }
 
@@ -170,12 +173,13 @@ async function handleLike(comment: ResourceComment) {
   margin-top: 8px;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .children {
-  margin-top: 8px;
-  padding-left: 20px;
-  border-left: 2px solid #e5e7eb;
+  margin-top: 12px;
+  padding-left: 18px;
+  border-left: 2px solid rgba(74, 111, 255, 0.14);
 }
 </style>
 

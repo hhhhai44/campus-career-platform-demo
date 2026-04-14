@@ -24,6 +24,7 @@ const likeCount = ref(props.post.likeCount)
 const liked = ref(!!props.post.liked)
 const likeLoading = ref(false)
 const favorited = ref(!!props.post.favorited)
+const favoriteCount = ref(props.post.favoriteCount)
 const favoriteLoading = ref(false)
 
 watch(
@@ -32,6 +33,7 @@ watch(
     likeCount.value = p.likeCount
     liked.value = !!p.liked
     favorited.value = !!p.favorited
+    favoriteCount.value = p.favoriteCount
   },
   { deep: true },
 )
@@ -60,7 +62,9 @@ async function toggleFavorite(e: MouseEvent) {
   favoriteLoading.value = true
   try {
     const res = await interactionApi.favoriteToggle(props.post.id)
+    const countDelta = favorited.value ? -1 : 1
     favorited.value = res.favorited
+    favoriteCount.value = Math.max(0, favoriteCount.value + countDelta)
     emit('refresh')
   } catch {
     // ignore
@@ -76,12 +80,13 @@ function gotoDetail() {
 </script>
 
 <template>
-  <el-card class="post-card" shadow="hover" @click="gotoDetail">
-    <div class="title">{{ post.title }}</div>
-    <div class="meta">
+  <el-card class="post-card ccp-card" shadow="never" @click="gotoDetail">
+    <div class="post-top">
       <span class="tag">{{ post.categoryName }}</span>
       <span class="meta-text">{{ post.authorName }}</span>
-      <span class="meta-dot">·</span>
+    </div>
+    <div class="title">{{ post.title }}</div>
+    <div class="meta">
       <span class="meta-text">
         {{ new Date(post.createTime).toLocaleString() }}
       </span>
@@ -92,7 +97,7 @@ function gotoDetail() {
     <div class="bottom">
       <div class="stats">
         <span>👍 {{ likeCount }}</span>
-        <span>⭐ {{ post.favoriteCount }}</span>
+        <span>⭐ {{ favoriteCount }}</span>
         <span>💬 {{ post.commentCount }}</span>
         <span>👀 {{ post.viewCount }}</span>
       </div>
@@ -113,7 +118,7 @@ function gotoDetail() {
           :loading="favoriteLoading"
           @click="toggleFavorite"
         >
-          {{ favorited ? '已收藏' : '收藏' }}
+          {{ favorited ? '已收藏' : '收藏一下' }}
         </el-button>
       </div>
     </div>
@@ -124,29 +129,51 @@ function gotoDetail() {
 .post-card {
   border-radius: var(--ccp-card-radius);
   cursor: pointer;
+  transition:
+    transform var(--ccp-fast),
+    box-shadow var(--ccp-fast),
+    border-color var(--ccp-fast);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
+  background: var(--ccp-card-bg);
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ccp-card-shadow-hover);
+  border-color: rgba(74, 111, 255, 0.2);
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ccp-text);
+}
+
+.post-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .meta {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   font-size: 12px;
   color: #6b7280;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .tag {
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--ccp-primary-soft);
   color: #4f46e5;
+  font-weight: 600;
 }
 
 .meta-text {
@@ -160,7 +187,7 @@ function gotoDetail() {
 .summary {
   margin: 6px 0 8px;
   font-size: 13px;
-  color: #4b5563;
+  color: var(--ccp-text-secondary);
   line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -173,17 +200,20 @@ function gotoDetail() {
   align-items: center;
   justify-content: space-between;
   margin-top: 4px;
+  gap: 12px;
 }
 
 .stats {
   display: flex;
   gap: 10px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--ccp-text-light);
+  flex-wrap: wrap;
 }
 
 .actions {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 </style>

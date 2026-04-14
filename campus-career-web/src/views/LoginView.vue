@@ -17,11 +17,11 @@ async function onSubmit() {
   if (loading.value) return
   errorMsg.value = null
   if (!username.value.trim()) {
-    errorMsg.value = '请输入用户名'
+    errorMsg.value = '先输入你的校园账号吧'
     return
   }
   if (!password.value) {
-    errorMsg.value = '请输入密码'
+    errorMsg.value = '别忘了输入密码'
     return
   }
 
@@ -32,7 +32,7 @@ async function onSubmit() {
     await router.replace(redirect)
   } catch (e) {
     if (e instanceof ApiError) errorMsg.value = e.message
-    else errorMsg.value = '登录失败，请稍后重试'
+    else errorMsg.value = '登录没成功，稍后再试试'
   } finally {
     loading.value = false
   }
@@ -45,42 +45,60 @@ function goRegister() {
 
 <template>
   <div class="login-shell">
+    <div class="shell-orbit shell-orbit-a"></div>
+    <div class="shell-orbit shell-orbit-b"></div>
     <div class="login-inner">
-      <!-- 左侧品牌与文案 -->
-      <div class="login-brand">
-        <div class="brand-block">
-          <div class="logo">CC</div>
-          <div class="brand-text">
-            <div class="brand-title">校园职涯社区</div>
-            <div class="brand-sub">Campus Career Platform</div>
+      <section class="login-brand">
+        <div class="brand-hero">
+          <div class="eyebrow">校园职涯社区</div>
+          <div class="brand-block">
+            <div class="logo">CC</div>
+            <div class="brand-text">
+              <div class="brand-title">Campus Career Platform</div>
+              <div class="brand-sub">一起把校园成长，变成更清晰的下一步</div>
+            </div>
+          </div>
+          <div class="welcome-title">成长路上，一起前行</div>
+          <div class="welcome-desc">
+            和同学一起分享经验、整理资料、获取建议，让每一次尝试都更有方向。
           </div>
         </div>
-        <div class="welcome-title">欢迎回来</div>
-        <div class="welcome-desc">
-          登录后即可发布帖子、上传资源，与同校同学分享实习经验与学习资料。
-        </div>
-        <div class="deco-list">
-          <div class="deco-item">
-            <span class="deco-icon">📝</span>
-            <span>发布经验与心得</span>
-          </div>
-          <div class="deco-item">
-            <span class="deco-icon">📚</span>
-            <span>浏览与下载资源</span>
-          </div>
-          <div class="deco-item">
-            <span class="deco-icon">💬</span>
-            <span>参与评论与互动</span>
-          </div>
-        </div>
-      </div>
 
-      <!-- 右侧登录卡片 -->
+        <div class="feature-grid">
+          <div class="feature-card feature-blue">
+            <span class="feature-icon">📝</span>
+            <div>
+              <div class="feature-title">聊聊实习和面试经验</div>
+              <div class="feature-sub">把踩坑和收获都说出来</div>
+            </div>
+          </div>
+          <div class="feature-card feature-orange">
+            <span class="feature-icon">📚</span>
+            <div>
+              <div class="feature-title">找学习资料和模板</div>
+              <div class="feature-sub">少走弯路，直接上手</div>
+            </div>
+          </div>
+          <div class="feature-card feature-green">
+            <span class="feature-icon">💬</span>
+            <div>
+              <div class="feature-title">参与讨论，收获反馈</div>
+              <div class="feature-sub">发问、交流、得到回应</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="brand-note">
+          这里不是一个普通登录页，而是你加入校园职涯社区的第一步。
+        </div>
+      </section>
+
       <div class="login-form-wrap">
-        <el-card class="login-card" shadow="hover">
+        <el-card class="login-card auth-card" shadow="never">
           <div class="form-header">
-            <div class="form-title">账号登录</div>
-            <div class="form-sub">使用用户名与密码登录</div>
+            <div class="form-kicker">欢迎回来</div>
+            <div class="form-title">进入社区</div>
+            <div class="form-sub">输入你的信息，马上继续浏览、讨论和分享。</div>
           </div>
 
           <el-form class="login-form" @submit.prevent="onSubmit">
@@ -88,7 +106,7 @@ function goRegister() {
               <el-input
                 v-model="username"
                 size="large"
-                placeholder="请输入用户名"
+                placeholder="学号 / 邮箱"
                 autocomplete="username"
                 clearable
               >
@@ -102,7 +120,7 @@ function goRegister() {
                 v-model="password"
                 size="large"
                 type="password"
-                placeholder="请输入密码"
+                placeholder="密码"
                 autocomplete="current-password"
                 show-password
               >
@@ -130,15 +148,15 @@ function goRegister() {
                 :loading="loading"
                 native-type="submit"
               >
-                {{ loading ? '登录中...' : '登 录' }}
+                {{ loading ? '正在进入...' : '进入社区' }}
               </el-button>
             </el-form-item>
           </el-form>
 
           <div class="form-footer">
-            <span class="footer-text">还没有账号？</span>
-            <el-button link type="primary" class="footer-link" @click="goRegister">
-              立即注册
+            <span class="footer-text">新同学？</span>
+            <el-button class="footer-link footer-link-button" @click="goRegister">
+              点此注册
             </el-button>
           </div>
         </el-card>
@@ -153,24 +171,49 @@ function goRegister() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
-  background: var(--ccp-page-bg);
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(74, 111, 255, 0.18), transparent 34%),
+    radial-gradient(circle at right 12%, rgba(255, 159, 67, 0.14), transparent 28%),
+    var(--ccp-page-bg-soft);
 }
 
 .login-inner {
   width: 100%;
-  max-width: 920px;
+  max-width: 1120px;
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.95fr);
+  gap: 42px;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
-/* 左侧品牌区 */
 .login-brand {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  max-width: 580px;
+}
+
+.brand-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.eyebrow {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(42, 92, 255, 0.1);
+  color: var(--ccp-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .brand-block {
@@ -180,17 +223,17 @@ function goRegister() {
 }
 
 .logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: var(--ccp-brand-gradient);
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--ccp-primary-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 700;
   font-size: 18px;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 16px 36px rgba(42, 92, 255, 0.28);
 }
 
 .brand-text {
@@ -200,53 +243,99 @@ function goRegister() {
 }
 
 .brand-title {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--ccp-text);
-  letter-spacing: 0.02em;
 }
 
 .brand-sub {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--ccp-text-muted);
 }
 
 .welcome-title {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--ccp-text);
-  line-height: 1.3;
-  letter-spacing: 0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .welcome-desc {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--ccp-text-secondary);
   line-height: 1.6;
-  max-width: 320px;
+  max-width: 520px;
 }
 
-.deco-list {
-  display: flex;
-  flex-direction: column;
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.deco-item {
+.feature-card {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--ccp-text-secondary);
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(233, 238, 245, 0.92);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(12px);
 }
 
-.deco-icon {
+.feature-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  flex: none;
   font-size: 18px;
-  width: 32px;
-  text-align: center;
 }
 
-/* 右侧表单卡片 */
+.feature-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ccp-text);
+  line-height: 1.35;
+}
+
+.feature-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ccp-text-muted);
+  line-height: 1.45;
+}
+
+.feature-blue .feature-icon {
+  background: rgba(74, 111, 255, 0.12);
+  color: var(--ccp-primary);
+}
+
+.feature-orange .feature-icon {
+  background: rgba(255, 159, 67, 0.14);
+  color: var(--ccp-accent-orange);
+}
+
+.feature-green .feature-icon {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--ccp-success);
+}
+
+.brand-note {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px dashed rgba(74, 111, 255, 0.2);
+  color: var(--ccp-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .login-form-wrap {
   display: flex;
   justify-content: center;
@@ -255,11 +344,14 @@ function goRegister() {
 
 .login-card {
   width: 100%;
-  max-width: 400px;
-  border-radius: var(--ccp-card-radius);
-  padding: 32px 28px;
-  box-shadow: var(--ccp-card-shadow);
-  border: 1px solid var(--ccp-card-border);
+  max-width: 430px;
+  border-radius: 18px;
+  padding: 34px 30px;
+  box-shadow: 0 24px 60px rgba(16, 24, 40, 0.12);
+  border: 1px solid rgba(233, 238, 245, 0.95);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  animation: rise-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .login-card :deep(.el-card__body) {
@@ -267,66 +359,109 @@ function goRegister() {
 }
 
 .form-header {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
+}
+
+.form-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(42, 92, 255, 0.08);
+  color: var(--ccp-primary);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 
 .form-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--ccp-text);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .form-sub {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ccp-text-muted);
+  line-height: 1.6;
 }
 
 .login-form {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .login-form :deep(.el-form-item) {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .login-form :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  padding: 4px 14px;
-  box-shadow: 0 0 0 1px var(--el-border-color);
+  border-radius: 14px;
+  min-height: 48px;
+  padding: 6px 14px;
+  box-shadow: 0 0 0 1px rgba(226, 232, 240, 0.95);
+  transition: box-shadow var(--ccp-normal), transform var(--ccp-normal), border-color var(--ccp-normal);
 }
 
 .login-form :deep(.el-input__wrapper:hover),
 .login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px var(--ccp-primary);
+  box-shadow:
+    0 0 0 1px rgba(74, 111, 255, 0.8),
+    0 10px 24px rgba(74, 111, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.login-form :deep(.el-input__prefix),
+.login-form :deep(.el-input__suffix) {
+  color: var(--ccp-text-light);
+  transition: color var(--ccp-normal);
+}
+
+.login-form :deep(.el-input__wrapper.is-focus .el-input__prefix),
+.login-form :deep(.el-input__wrapper.is-focus .el-input__suffix) {
+  color: var(--ccp-primary);
 }
 
 .input-icon {
-  font-size: 16px;
+  font-size: 15px;
   margin-right: 4px;
-  opacity: 0.8;
 }
 
 .form-alert {
-  margin-bottom: 16px;
-  border-radius: 12px;
+  margin-bottom: 14px;
+  border-radius: 14px;
 }
 
 .form-actions {
   margin-bottom: 0;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .submit-btn {
   width: 100%;
-  height: 44px;
+  height: 48px;
   font-size: 15px;
   font-weight: 600;
+  border: 0;
+  background: var(--ccp-primary-gradient);
+  box-shadow: 0 14px 26px rgba(42, 92, 255, 0.24);
+  transition: transform var(--ccp-normal), box-shadow var(--ccp-normal), filter var(--ccp-normal);
+}
+
+.submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(42, 92, 255, 0.28);
+  filter: brightness(1.03);
+}
+
+.submit-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 10px 18px rgba(42, 92, 255, 0.18);
 }
 
 .form-footer {
-  padding-top: 16px;
-  border-top: 1px solid var(--ccp-card-border);
+  padding-top: 18px;
+  border-top: 1px solid rgba(233, 238, 245, 0.95);
   text-align: center;
 }
 
@@ -339,6 +474,71 @@ function goRegister() {
 .footer-link {
   font-size: 13px;
   font-weight: 600;
+}
+
+.footer-link-button {
+  margin-left: 2px;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 111, 255, 0.16);
+  background: rgba(74, 111, 255, 0.06);
+  color: var(--ccp-primary);
+  transition: background var(--ccp-normal), transform var(--ccp-normal), box-shadow var(--ccp-normal);
+}
+
+.footer-link-button:hover {
+  background: rgba(74, 111, 255, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(74, 111, 255, 0.12);
+}
+
+.shell-orbit {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(8px);
+  animation: float 9s ease-in-out infinite;
+}
+
+.shell-orbit-a {
+  width: 300px;
+  height: 300px;
+  left: -90px;
+  top: 72px;
+  background: radial-gradient(circle, rgba(74, 111, 255, 0.14), transparent 68%);
+}
+
+.shell-orbit-b {
+  width: 220px;
+  height: 220px;
+  right: 12%;
+  bottom: 54px;
+  background: radial-gradient(circle, rgba(255, 159, 67, 0.12), transparent 68%);
+  animation-delay: -3s;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
 }
 
 @media (max-width: 768px) {
@@ -354,12 +554,25 @@ function goRegister() {
     align-items: center;
   }
 
-  .welcome-desc {
-    text-align: center;
+  .eyebrow {
+    align-self: center;
   }
 
-  .deco-list {
-    align-items: center;
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card {
+    width: 100%;
+  }
+
+  .welcome-desc {
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .brand-note {
+    text-align: left;
   }
 }
 </style>

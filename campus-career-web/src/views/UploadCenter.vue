@@ -50,15 +50,15 @@ async function fetchResourceCategories() {
 
 async function submitPost() {
   if (!postForm.value.title.trim()) {
-    ElMessage.warning('请输入帖子标题')
+    ElMessage.warning('先写一个清晰的帖子标题')
     return
   }
   if (!postForm.value.content.trim()) {
-    ElMessage.warning('请输入帖子内容')
+    ElMessage.warning('补充一下帖子内容吧')
     return
   }
   if (!postForm.value.categoryId) {
-    ElMessage.warning('请选择帖子分类')
+    ElMessage.warning('记得选择帖子分类')
     return
   }
   posting.value = true
@@ -68,10 +68,10 @@ async function submitPost() {
       content: postForm.value.content.trim(),
       categoryId: postForm.value.categoryId,
     })
-    ElMessage.success('帖子发布成功')
+    ElMessage.success('发布成功！快去看看大家的反馈')
     router.push({ name: 'forum-detail', params: { id } })
   } catch {
-    ElMessage.error('帖子发布失败，请稍后重试')
+    ElMessage.error('发布失败，稍后再试试')
   } finally {
     posting.value = false
   }
@@ -79,7 +79,7 @@ async function submitPost() {
 
 async function submitResource() {
   if (!resourceForm.value.title.trim()) {
-    ElMessage.warning('请输入资源标题')
+    ElMessage.warning('先写资源标题，方便同学检索')
     return
   }
   if (!resourceForm.value.categoryId) {
@@ -87,7 +87,7 @@ async function submitResource() {
     return
   }
   if (!resourceForm.value.fileUrl.trim()) {
-    ElMessage.warning('请输入资源地址')
+    ElMessage.warning('请填写可访问的资源地址')
     return
   }
   uploading.value = true
@@ -99,10 +99,10 @@ async function submitResource() {
       fileUrl: resourceForm.value.fileUrl.trim(),
       tags: resourceForm.value.tags?.trim() || '',
     })
-    ElMessage.success('资源上传成功')
+    ElMessage.success('上传完成！感谢你的分享')
     router.push({ name: 'resource-detail', params: { id } })
   } catch {
-    ElMessage.error('资源上传失败，请稍后重试')
+    ElMessage.error('上传失败，稍后再试试')
   } finally {
     uploading.value = false
   }
@@ -118,7 +118,7 @@ onMounted(() => {
   <div class="upload">
     <div class="header">
       <div class="title">上传中心</div>
-      <div class="sub">发布帖子或上传学习资源，帮助更多同学</div>
+      <div class="sub">选择发布类型，按步骤完成内容分享</div>
     </div>
 
     <el-card class="card" shadow="never">
@@ -156,12 +156,12 @@ onMounted(() => {
                 v-model="postForm.content"
                 type="textarea"
                 :rows="6"
-                placeholder="详细描述你的经历、踩坑与建议..."
+                placeholder="写下背景、过程和建议，越具体越有帮助"
               />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="posting" @click="submitPost">
-                发布帖子
+                立即发布
               </el-button>
             </el-form-item>
           </el-form>
@@ -206,7 +206,7 @@ onMounted(() => {
                 v-model="resourceForm.description"
                 type="textarea"
                 :rows="4"
-                placeholder="简单介绍资源内容与适用场景"
+                placeholder="简单说明资源内容和适用场景"
               />
             </el-form-item>
             <el-form-item label="标签">
@@ -217,7 +217,7 @@ onMounted(() => {
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="uploading" @click="submitResource">
-                上传资源
+                立即上传
               </el-button>
             </el-form-item>
           </el-form>

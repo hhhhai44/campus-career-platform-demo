@@ -19,7 +19,7 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
 
 async function fetchMyPosts() {
   if (!auth.isAuthed) {
-    ElMessage.warning('请先登录')
+    ElMessage.warning('请先登录后查看个人中心')
     return
   }
   loading.value = true
@@ -29,7 +29,7 @@ async function fetchMyPosts() {
     total.value = resp.total
   } catch {
     posts.value = []
-    ElMessage.error('加载失败，请稍后重试')
+    ElMessage.error('加载失败，稍后再试试')
   } finally {
     loading.value = false
   }
@@ -37,13 +37,13 @@ async function fetchMyPosts() {
 
 async function handleDelete(postId: number) {
   try {
-    await ElMessageBox.confirm('确定要删除这个帖子吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除吗？这个操作无法撤销。', '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
     await postApi.delete(postId)
-    ElMessage.success('删除成功')
+    ElMessage.success('帖子已删除')
     await fetchMyPosts()
   } catch (err: any) {
     if (err !== 'cancel') {
@@ -58,7 +58,7 @@ function handlePageChange(p: number) {
 }
 
 function goToDetail(id: number) {
-  router.push(`/forum/post/${id}`)
+  router.push({ name: 'forum-detail', params: { id } })
 }
 
 onMounted(() => {
@@ -70,22 +70,22 @@ onMounted(() => {
 
 <template>
   <div class="me">
-    <div class="header">
+    <div class="header ccp-page-header">
       <div class="title">我的</div>
-      <div class="sub">查看我发布的帖子</div>
+      <div class="sub">管理我的内容与互动记录</div>
     </div>
 
-    <div class="user-card">
+    <div class="user-card ccp-card">
       <div class="avatar">
         <span>{{ avatarText }}</span>
       </div>
       <div class="info">
-        <div class="name">当前登录用户</div>
-        <div class="meta">用户名: {{ displayUsername }}</div>
+        <div class="name">欢迎回来</div>
+        <div class="meta">账号：{{ displayUsername }}</div>
       </div>
     </div>
 
-    <el-card class="posts-card" shadow="never">
+    <el-card class="posts-card ccp-card" shadow="never">
       <div class="posts-header">
         <div class="posts-title">我的帖子</div>
       </div>
@@ -121,7 +121,7 @@ onMounted(() => {
             </el-button>
           </div>
         </div>
-        <div v-if="!posts.length" class="empty-text">还没有发布过帖子</div>
+        <div v-if="!posts.length" class="empty-text">你还没发布过帖子，去分享第一条经验吧！</div>
       </div>
 
       <div v-if="total > size" class="pager">
@@ -149,8 +149,9 @@ onMounted(() => {
 }
 
 .title {
-  font-size: var(--ccp-title-size);
-  font-weight: var(--ccp-title-weight);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ccp-text);
 }
 
 .sub {
@@ -163,16 +164,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f9fafb;
+  padding: 16px;
+  border-radius: var(--ccp-card-radius);
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  background: #111827;
+  background: var(--ccp-primary-gradient);
   color: white;
   display: flex;
   align-items: center;
@@ -184,6 +184,7 @@ onMounted(() => {
 .info .name {
   font-size: 14px;
   font-weight: 600;
+  color: var(--ccp-text);
 }
 
 .info .meta {
@@ -217,16 +218,17 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   padding: 12px 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid rgba(243, 244, 246, 0.9);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
 }
 
 .post-item:hover {
-  background-color: #f9fafb;
-  border-radius: 4px;
+  background-color: rgba(74, 111, 255, 0.03);
+  border-radius: 12px;
   padding-left: 8px;
   padding-right: 8px;
+  transform: translateY(-1px);
 }
 
 .post-main {
@@ -236,7 +238,7 @@ onMounted(() => {
 .post-title {
   font-size: 16px;
   font-weight: 600;
-  color: #111827;
+  color: var(--ccp-text);
   margin-bottom: 6px;
 }
 
@@ -258,7 +260,7 @@ onMounted(() => {
 .tag {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #eef2ff;
+  background: var(--ccp-primary-soft);
   color: var(--ccp-primary);
   font-size: 11px;
 }

@@ -19,7 +19,7 @@ async function fetchPosts() {
     posts.value = page.records
   } catch {
     posts.value = []
-    ElMessage.error('帖子加载失败，请稍后重试')
+    ElMessage.error('帖子加载失败，稍后再试试')
   } finally {
     loadingPosts.value = false
   }
@@ -32,7 +32,7 @@ async function fetchResources() {
     resources.value = page.records
   } catch {
     resources.value = []
-    ElMessage.error('资源加载失败，请稍后重试')
+    ElMessage.error('资源加载失败，稍后再试试')
   } finally {
     loadingResources.value = false
   }
@@ -56,13 +56,13 @@ onMounted(() => {
   <div class="home">
     <div class="hero">
       <div class="hero-main">
-        <div class="hero-title">发现同校同路人的成长故事</div>
-        <div class="hero-sub">在这里分享实习经验、课程资源与职涯心得，一起走得更远。</div>
+        <div class="hero-title">把校园成长，变成看得见的进步</div>
+        <div class="hero-sub">分享经验、交换资料、获得反馈，和同路人一起把职业路走得更清晰。</div>
         <div class="hero-actions">
           <el-button type="primary" size="large" round @click="$router.push('/forum')">
             去逛论坛
           </el-button>
-          <el-button size="large" round @click="$router.push('/resource')">浏览资源库</el-button>
+          <el-button size="large" round @click="$router.push('/resource')">找找资源</el-button>
         </div>
       </div>
       <div class="hero-side">
@@ -116,7 +116,9 @@ onMounted(() => {
               <span>👀 {{ item.viewCount }}</span>
             </div>
           </el-card>
-          <div v-if="!posts.length && !loadingPosts" class="empty-text">还没有帖子，去论坛发布一条吧～</div>
+          <div v-if="!posts.length && !loadingPosts" class="empty-text">
+            这里还空空的，发布第一个帖子，开启讨论吧！
+          </div>
         </div>
       </section>
 
@@ -150,7 +152,9 @@ onMounted(() => {
               <span>⬇️ {{ res.downloadCount }}</span>
             </div>
           </el-card>
-          <div v-if="!resources.length && !loadingResources" class="empty-text">暂时没有资源</div>
+          <div v-if="!resources.length && !loadingResources" class="empty-text">
+            资源区还在等第一份分享，上传一份你觉得有用的资料吧。
+          </div>
         </div>
       </section>
     </div>

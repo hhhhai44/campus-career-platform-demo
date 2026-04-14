@@ -87,27 +87,29 @@ onActivated(() => {
 
 <template>
   <div class="resource-list-page">
-    <div class="header">
-      <div class="title">资源库</div>
-      <div class="sub">整理课程笔记、面经、项目模板与学习资料</div>
+    <div class="header ccp-page-header">
+      <div>
+        <div class="title">资源库</div>
+        <div class="sub">课程笔记、面经、项目模板都能在这里找到</div>
+      </div>
     </div>
 
-    <div class="toolbar">
+    <div class="toolbar ccp-card">
       <el-input
         v-model="keyword"
-        placeholder="搜索资源标题或关键词"
+        placeholder="找找看你需要的资料"
         clearable
         class="search-input"
         @keyup.enter="onSearch"
         @clear="onSearch"
       >
         <template #append>
-          <el-button type="primary" @click="onSearch">搜索</el-button>
+          <el-button type="primary" @click="onSearch">找找看</el-button>
         </template>
       </el-input>
     </div>
 
-    <div class="categories">
+    <div class="categories ccp-card">
       <button
         class="cat-chip"
         :class="{ active: activeCategoryId === null }"
@@ -128,14 +130,16 @@ onActivated(() => {
           {{ cat.name }}
         </button>
       </template>
-      <span v-else class="cat-loading">加载分类中...</span>
+      <span v-else class="cat-loading">正在准备分类...</span>
     </div>
 
     <el-skeleton v-if="loading" animated :rows="8" />
 
     <div v-else class="grid">
       <ResourceCard v-for="item in resources" :key="item.id" :resource="item" />
-      <div v-if="!resources.length && !loading" class="empty-text">暂时没有相关资源</div>
+      <div v-if="!resources.length && !loading" class="empty-text">
+        这里还没有匹配资源，试试其他关键词，或上传第一份资料。
+      </div>
     </div>
 
     <div v-if="total > size" class="pager">
@@ -162,45 +166,57 @@ onActivated(() => {
 }
 
 .title {
-  font-size: var(--ccp-title-size);
+  font-size: 24px;
   font-weight: var(--ccp-title-weight);
+  color: var(--ccp-text);
 }
 
 .sub {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: var(--ccp-sub-size);
   color: var(--ccp-sub-color);
+  line-height: 1.6;
 }
 
 .toolbar {
   display: flex;
   gap: 10px;
+  padding: 16px;
 }
 
 .search-input {
-  max-width: 420px;
+  max-width: 480px;
 }
 
 .categories {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 14px 16px;
+  align-items: center;
 }
 
 .cat-chip {
   border-radius: 999px;
-  border: 1px solid var(--ccp-card-border);
-  background: #f9fafb;
-  padding: 4px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(248, 249, 250, 0.95);
+  padding: 7px 14px;
   font-size: 12px;
   color: var(--ccp-text-secondary);
   cursor: pointer;
+  transition: all var(--ccp-fast);
 }
 
 .cat-chip.active {
-  background: var(--ccp-text);
-  border-color: var(--ccp-text);
-  color: #f9fafb;
+  background: var(--ccp-primary-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(42, 92, 255, 0.18);
+}
+
+.cat-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(74, 111, 255, 0.24);
 }
 
 .cat-loading {

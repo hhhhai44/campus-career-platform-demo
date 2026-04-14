@@ -1,4 +1,4 @@
-<script setup lang="ts">
+v<script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
@@ -40,8 +40,7 @@ async function fetchDetail(id: number) {
       favorited: !!detail.favorited,
     }
   } catch {
-    if (requestSeq !== detailRequestSeq) return
-    ElMessage.error('资源详情加载失败，请稍后重试')
+    if (requestSeq !== detailRequestSeq) return    ElMessage.error('资源详情加载失败，稍后再试试')
     resource.value = null
   } finally {
     if (requestSeq === detailRequestSeq) {
@@ -60,7 +59,7 @@ async function fetchComments(resourceId: number) {
   } catch {
     if (requestSeq !== commentRequestSeq) return
     comments.value = []
-    ElMessage.error('评论加载失败，请稍后重试')
+    ElMessage.error('评论加载失败，稍后再试试')
   } finally {
     if (requestSeq === commentRequestSeq) {
       loadingComments.value = false
@@ -75,7 +74,7 @@ async function onDownload() {
     resource.value.downloadCount = (resource.value.downloadCount || 0) + 1
     window.open(url, '_blank', 'noopener,noreferrer')
   } catch {
-    ElMessage.error('下载失败，请稍后重试')
+    ElMessage.error('下载失败，稍后再试试')
   }
 }
 
@@ -87,7 +86,7 @@ async function onLike() {
     resource.value.liked = resp.liked
     resource.value.likeCount = resp.likeCount
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('操作没成功，稍后再试试')
   } finally {
     likeLoading.value = false
   }
@@ -104,7 +103,7 @@ async function onFavorite() {
       (resource.value.favoriteCount || 0) + (resp.favorited ? 1 : -1),
     )
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('操作没成功，稍后再试试')
   } finally {
     favoriteLoading.value = false
   }
@@ -120,12 +119,12 @@ async function submitRating() {
     })
     score.value = 0
     await fetchDetail(resource.value.id)
-    ElMessage.success('评分提交成功')
+    ElMessage.success('评分已提交，感谢你的反馈')
   } catch (e) {
     if (e instanceof ApiError) {
-      ElMessage.error(e.message || '评分提交失败，请稍后重试')
+      ElMessage.error(e.message || '评分提交失败，稍后再试试')
     } else {
-      ElMessage.error('评分提交失败，请稍后重试')
+      ElMessage.error('评分提交失败，稍后再试试')
     }
   } finally {
     submitting.value = false
@@ -146,12 +145,12 @@ async function submitComment() {
     commentContent.value = ''
     replyingTo.value = null
     await fetchComments(resource.value.id)
-    ElMessage.success('评论发表成功')
+    ElMessage.success('评论已发布')
   } catch (e) {
     if (e instanceof ApiError) {
-      ElMessage.error(e.message || '评论发表失败，请稍后重试')
+      ElMessage.error(e.message || '评论发布失败，稍后再试试')
     } else {
-      ElMessage.error('评论发表失败，请稍后重试')
+      ElMessage.error('评论发布失败，稍后再试试')
     }
   } finally {
     submittingComment.value = false
@@ -197,6 +196,17 @@ const showRatingCard = computed(() => {
 
 <template>
   <div class="detail">
+    <div class="header ccp-page-header">
+      <div>
+        <div class="title-page">资源详情</div>
+        <div class="sub-page">看看资源内容、评分和评论，再决定要不要下载</div>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>评分、收藏、下载都能即时更新</span>
+      </div>
+    </div>
+
     <el-skeleton v-if="loading" animated :rows="6" />
     <template v-else>
       <el-card v-if="resource" class="main-card" shadow="never">
@@ -264,7 +274,7 @@ const showRatingCard = computed(() => {
       </el-card>
 
       <el-card v-if="showRatingCard" class="rate-card" shadow="never">
-        <div class="rate-title">为资源打个分吧</div>
+        <div class="rate-title">觉得这个资源怎么样？打个分吧</div>
         <el-form @submit.prevent>
           <el-form-item label="评分">
             <el-rate v-model="score" :max="5" allow-half />
@@ -278,7 +288,7 @@ const showRatingCard = computed(() => {
       </el-card>
 
       <el-card class="comment-card" shadow="never">
-        <div class="comment-title">资源评论</div>
+        <div class="comment-title">资源评论区</div>
         <el-form @submit.prevent>
           <el-form-item v-if="replyingTo">
             <div class="reply-hint">
@@ -291,7 +301,7 @@ const showRatingCard = computed(() => {
               v-model="commentContent"
               type="textarea"
               :rows="3"
-              :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你对资源的看法... '"
+              :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你的使用感受，帮到更多同学'"
             />
           </el-form-item>
           <el-form-item>
@@ -311,7 +321,7 @@ const showRatingCard = computed(() => {
             @refresh="handleCommentRefresh"
             @reply="handleReply"
           />
-          <div v-else class="empty-text">还没有评论，来发表第一条评论吧～</div>
+          <div v-else class="empty-text">评论区还空着，来发表第一条评论吧！</div>
         </template>
       </el-card>
     </template>
@@ -325,8 +335,47 @@ const showRatingCard = computed(() => {
   gap: 14px;
 }
 
+.header {
+  margin-bottom: 4px;
+}
+
+.title-page {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ccp-text);
+}
+
+.sub-page {
+  margin-top: 4px;
+  color: var(--ccp-sub-color);
+  font-size: var(--ccp-sub-size);
+  line-height: 1.6;
+}
+
+.header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(74, 111, 255, 0.08);
+  color: var(--ccp-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ccp-primary);
+  box-shadow: 0 0 0 4px rgba(74, 111, 255, 0.12);
+}
+
 .main-card {
   border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
 }
 
 .header {
@@ -412,6 +461,8 @@ const showRatingCard = computed(() => {
 .rate-card,
 .comment-card {
   border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
 }
 
 .rate-title,

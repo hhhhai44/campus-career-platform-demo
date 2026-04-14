@@ -14,13 +14,12 @@ function gotoDetail() {
 </script>
 
 <template>
-  <el-card class="resource-card" shadow="hover" @click="gotoDetail">
-    <div class="title">{{ resource.title }}</div>
-    <div class="meta">
-      <span class="meta-text">{{ resource.categoryName }}</span>
-      <span class="meta-dot">·</span>
+  <el-card class="resource-card ccp-card" shadow="never" @click="gotoDetail">
+    <div class="resource-top">
+      <span class="tag">{{ resource.categoryName }}</span>
       <span class="meta-text">{{ resource.uploaderName }}</span>
     </div>
+    <div class="title">{{ resource.title }}</div>
     <div v-if="resource.description" class="desc">
       {{ resource.description }}
     </div>
@@ -28,7 +27,7 @@ function gotoDetail() {
       <div class="stats">
         <span>⭐ {{ resource.scoreAvg?.toFixed?.(1) ?? '-' }} ({{ resource.scoreCount }})</span>
         <span>👍 {{ resource.likeCount }}</span>
-        <span>收藏 {{ resource.favoriteCount }}</span>
+        <span>⭐收藏 {{ resource.favoriteCount }}</span>
         <span>💬 {{ resource.commentCount }}</span>
         <span>⬇️ {{ resource.downloadCount }}</span>
       </div>
@@ -40,34 +39,48 @@ function gotoDetail() {
 .resource-card {
   border-radius: var(--ccp-card-radius);
   cursor: pointer;
+  transition: transform var(--ccp-fast), box-shadow var(--ccp-fast);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
+  background: var(--ccp-card-bg);
+}
+
+.resource-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ccp-card-shadow-hover);
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ccp-text);
+}
+
+.resource-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.meta-text {
   color: var(--ccp-text-muted);
 }
 
-.meta-dot {
-  color: #9ca3af;
+.tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 159, 67, 0.12);
+  color: #b45309;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .desc {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--ccp-text-secondary);
   margin-bottom: 6px;
   line-height: 1.55;
   display: -webkit-box;
@@ -84,6 +97,7 @@ function gotoDetail() {
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--ccp-text-light);
+  flex-wrap: wrap;
 }
 </style>

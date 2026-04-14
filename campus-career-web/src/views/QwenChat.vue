@@ -22,7 +22,7 @@ const items = ref<ChatItem[]>([
   {
     role: 'system',
     content:
-      '这里是学涯助手。你可以聊学习规划、实习求职、校园生活与职业选择，我会给出可执行的建议。',
+      '嗨，我是学涯助手。你可以聊学习规划、实习求职和职业方向，我会给你可执行的建议。',
     ts: Date.now(),
   },
 ])
@@ -87,7 +87,7 @@ async function onSend() {
     if (!items.value[assistantIndex]?.content.trim()) {
       setAssistantContent(
         assistantIndex,
-        `【错误】${msg}\n\n提示：后端需配置学涯助手服务密钥（DASHSCOPE_API_KEY 或 CCPD_QWEN_API_KEY）后再重试。`,
+        `【暂时无法回答】${msg}\n\n请稍后再试，或联系管理员检查助手服务配置。`,
       )
     }
   } finally {
@@ -177,12 +177,12 @@ function cleanVisibleContent(input: string) {
   <div class="qa-page">
     <div class="header">
       <div class="title">学涯助手</div>
-      <div class="sub">你的校园成长与求职陪练伙伴</div>
+      <div class="sub">你的学习与求职陪练伙伴</div>
     </div>
 
     <el-card class="chat-card" shadow="never">
       <div class="chat-toolbar">
-        <div class="toolbar-tip">可直接提问；回车发送，Shift + Enter 换行</div>
+        <div class="toolbar-tip">直接提问就好：回车发送，Shift + Enter 换行</div>
         <div class="toolbar-actions">
           <el-button type="warning" size="small" @click="onStop" :disabled="!loading">停止生成</el-button>
           <el-button type="default" size="small" @click="onClear" :disabled="loading">清空对话</el-button>
@@ -215,12 +215,12 @@ function cleanVisibleContent(input: string) {
       <div class="composer-actions">
         <div class="left-info">
           <div class="hint" v-if="errorText">{{ errorText }}</div>
-          <div class="tip" v-else>描述越具体，学涯助手给出的建议越有针对性</div>
+          <div class="tip" v-else>多告诉我一些细节，我能给你更量身定制的建议哦 ~</div>
         </div>
         <div class="right-actions">
           <span class="counter">{{ questionLength }}/{{ MAX_QUESTION_LEN }}</span>
           <el-button type="primary" :loading="loading" :disabled="!canSend" @click="onSend">
-            开始咨询
+            发送问题
           </el-button>
         </div>
       </div>

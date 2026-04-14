@@ -46,7 +46,7 @@ async function fetchPost(id: number) {
     }
   } catch {
     if (requestSeq !== postRequestSeq) return
-    ElMessage.error('帖子加载失败，请稍后重试')
+    ElMessage.error('帖子加载失败，稍后再试试')
     post.value = null
   } finally {
     if (requestSeq === postRequestSeq) {
@@ -64,7 +64,7 @@ async function fetchComments(id: number) {
     comments.value = page.records
   } catch {
     if (requestSeq !== commentRequestSeq) return
-    ElMessage.error('评论加载失败，请稍后重试')
+    ElMessage.error('评论加载失败，稍后再试试')
     comments.value = []
   } finally {
     if (requestSeq === commentRequestSeq) {
@@ -82,7 +82,7 @@ async function onLike() {
     post.value.liked = res.liked
     post.value.likeCount = res.likeCount
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('操作没成功，稍后再试试')
   } finally {
     likeLoading.value = false
   }
@@ -95,9 +95,9 @@ async function onFavorite() {
   try {
     const res = await interactionApi.favoriteToggle(post.value.id)
     post.value.favorited = res.favorited
-    ElMessage.success(res.favorited ? '已收藏' : '已取消收藏')
+    ElMessage.success(res.favorited ? '收藏成功' : '已取消收藏')
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('操作没成功，稍后再试试')
   } finally {
     favoriteLoading.value = false
   }
@@ -118,7 +118,7 @@ async function submitComment() {
     replyingTo.value = null
     await Promise.all([fetchPost(post.value.id), fetchComments(post.value.id)])
   } catch {
-    ElMessage.error('评论发表失败，请稍后重试')
+    ElMessage.error('评论发送失败，稍后再试试')
   } finally {
     submittingComment.value = false
   }
@@ -137,14 +137,14 @@ function cancelReply() {
 async function handleDeletePost() {
   if (!post.value) return
   try {
-    await ElMessageBox.confirm('确定要删除这个帖子吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除吗？这个操作无法撤销。', '删除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
     deleteLoading.value = true
     await postApi.delete(post.value.id)
-    ElMessage.success('删除成功')
+    ElMessage.success('帖子已删除')
     // 返回上一页或首页
     window.history.back()
   } catch (err: any) {
@@ -179,6 +179,17 @@ watch(
 
 <template>
   <div class="detail">
+    <div class="header ccp-page-header">
+      <div>
+        <div class="title-page">帖子详情</div>
+        <div class="sub-page">把经验、观点和回复都串在一起看，更像一次完整讨论</div>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>点赞和收藏都有即时反馈</span>
+      </div>
+    </div>
+
     <el-skeleton v-if="loadingPost" animated :rows="6" />
     <template v-else>
       <el-card v-if="post" class="post-card" shadow="never">
@@ -244,12 +255,12 @@ watch(
             v-model="commentContent"
             type="textarea"
             :rows="3"
-            :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你的想法...'"
+            :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写点你的看法，让讨论更完整'"
           />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submittingComment" @click="submitComment">
-            {{ replyingTo ? '回复' : '发表' }}
+            {{ replyingTo ? '回复评论' : '发表评论' }}
           </el-button>
           <el-button v-if="replyingTo" @click="cancelReply">取消</el-button>
         </el-form-item>
@@ -264,7 +275,7 @@ watch(
           @refresh="handleCommentRefresh"
           @reply="handleReply"
         />
-        <div v-else class="empty-text">还没有评论，来占个沙发吧～</div>
+        <div v-else class="empty-text">评论区还空着，来留下第一条观点吧！</div>
       </template>
     </el-card>
   </div>
@@ -277,8 +288,47 @@ watch(
   gap: 14px;
 }
 
+.header {
+  margin-bottom: 4px;
+}
+
+.title-page {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ccp-text);
+}
+
+.sub-page {
+  margin-top: 4px;
+  color: var(--ccp-sub-color);
+  font-size: var(--ccp-sub-size);
+  line-height: 1.6;
+}
+
+.header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(74, 111, 255, 0.08);
+  color: var(--ccp-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ccp-primary);
+  box-shadow: 0 0 0 4px rgba(74, 111, 255, 0.12);
+}
+
 .post-card {
   border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
 }
 
 .title {
@@ -323,10 +373,13 @@ watch(
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .comment-card {
   border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
 }
 
 .comment-title {

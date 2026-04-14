@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { notificationApi, type Notification } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 
@@ -10,8 +10,15 @@ const current = ref(1)
 const size = ref(10)
 const total = ref(0)
 const markAllLoading = ref(false)
+const activeFilter = ref<'all' | 'unread'>('all')
 
 const notificationStore = useNotificationStore()
+const filteredNotifications = computed(() => {
+  if (activeFilter.value === 'unread') {
+    return notifications.value.filter((item) => item.isRead === 0)
+  }
+  return notifications.value
+})
 
 async function fetchNotifications() {
   loading.value = true
@@ -24,7 +31,7 @@ async function fetchNotifications() {
     total.value = resp.total
   } catch {
     notifications.value = []
-    ElMessage.error('通知加载失败，请稍后重试')
+    ElMessage.error('通知加载失败，稍后再试试')
   } finally {
     loading.value = false
   }
@@ -43,7 +50,7 @@ async function markAsRead(item: Notification) {
     notificationStore.decreaseUnread(1)
     ElMessage.success('已标记为已读')
   } catch {
-    ElMessage.error('标记失败，请稍后重试')
+    ElMessage.error('标记失败，稍后再试试')
   }
 }
 
@@ -53,9 +60,9 @@ async function markAllRead() {
     await notificationApi.markAllRead()
     notifications.value = notifications.value.map((item) => ({ ...item, isRead: 1 }))
     notificationStore.resetUnread()
-    ElMessage.success('全部标记为已读')
+    ElMessage.success('全部通知都已读啦')
   } catch {
-    ElMessage.error('操作失败，请稍后重试')
+    ElMessage.error('操作没成功，稍后再试试')
   } finally {
     markAllLoading.value = false
   }
@@ -73,38 +80,44 @@ onMounted(() => {
 
 <template>
   <div class="notification-page">
-    <div class="header">
+    <div class="header ccp-page-header">
       <div>
         <div class="title">通知中心</div>
-        <div class="sub">查看系统消息并管理已读状态</div>
+        <div class="sub">看看最近动态，及时跟进互动消息</div>
       </div>
-      <el-button type="primary" plain :loading="markAllLoading" @click="markAllRead">
-        全部标记为已读
-      </el-button>
+      <div class="header-actions">
+        <el-radio-group v-model="activeFilter" size="small">
+          <el-radio-button label="all">全部</el-radio-button>
+          <el-radio-button label="unread">未读</el-radio-button>
+        </el-radio-group>
+        <el-button type="primary" plain :loading="markAllLoading" @click="markAllRead">
+          一键全部已读
+        </el-button>
+      </div>
     </div>
 
-    <el-card shadow="never" class="list-card">
+    <el-card shadow="never" class="list-card ccp-card">
       <el-skeleton v-if="loading" :rows="6" animated />
 
-      <div v-else-if="!notifications.length" class="empty">暂无通知</div>
+      <div v-else-if="!filteredNotifications.length" class="empty">暂时没有通知，去逛逛论坛吧</div>
 
       <div v-else class="list">
         <div
-          v-for="item in notifications"
+          v-for="item in filteredNotifications"
           :key="item.id"
           class="list-item"
           :class="{ unread: item.isRead === 0 }"
         >
           <div class="main" @click="markAsRead(item)">
             <div class="row-top">
-              <div class="item-title">{{ item.title }}</div>
+              <div class="item-title">{{ item.title || '社区新动态' }}</div>
               <el-tag size="small" :type="item.isRead === 0 ? 'danger' : 'info'">
                 {{ item.isRead === 0 ? '未读' : '已读' }}
               </el-tag>
             </div>
             <div class="content">{{ item.content }}</div>
             <div class="meta">
-              <span>{{ item.typeDesc || item.typeName || '系统通知' }}</span>
+              <span>{{ item.typeDesc || item.typeName || '社区提醒' }}</span>
               <span>·</span>
               <span>{{ formatTime(item.createTime) }}</span>
             </div>
@@ -148,9 +161,16 @@ onMounted(() => {
   gap: 10px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .title {
-  font-size: var(--ccp-title-size);
-  font-weight: var(--ccp-title-weight);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ccp-text);
 }
 
 .sub {
@@ -161,6 +181,8 @@ onMounted(() => {
 
 .list-card {
   border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
 }
 
 .empty {
@@ -176,18 +198,24 @@ onMounted(() => {
 }
 
 .list-item {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 14px;
+  padding: 14px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  transition: transform var(--ccp-fast), box-shadow var(--ccp-fast), border-color var(--ccp-fast);
 }
 
 .list-item.unread {
-  border-color: #c7d2fe;
-  background: #f8faff;
+  border-color: rgba(74, 111, 255, 0.2);
+  background: rgba(74, 111, 255, 0.04);
+}
+
+.list-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.06);
 }
 
 .main {
@@ -203,8 +231,8 @@ onMounted(() => {
 }
 
 .item-title {
-  font-weight: 600;
-  color: #111827;
+  font-weight: 700;
+  color: var(--ccp-text);
 }
 
 .content {
@@ -217,7 +245,7 @@ onMounted(() => {
 .meta {
   margin-top: 8px;
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--ccp-text-light);
   display: flex;
   align-items: center;
   gap: 8px;

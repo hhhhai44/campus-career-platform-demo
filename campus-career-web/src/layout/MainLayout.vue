@@ -17,7 +17,6 @@ const navItems = [
   { label: '资源库', path: '/resource', name: 'resource-list' },
   { label: '学涯助手', path: '/qa', name: 'smart-qa' },
   { label: '上传', path: '/upload', name: 'upload' },
-  { label: '我的', path: '/me', name: 'me' },
 ]
 
 const activePath = computed(() => {
@@ -25,7 +24,6 @@ const activePath = computed(() => {
   if (route.path.startsWith('/resource')) return '/resource'
   if (route.path.startsWith('/qa') || route.path.startsWith('/qwen')) return '/qa'
   if (route.path.startsWith('/upload')) return '/upload'
-  if (route.path.startsWith('/me')) return '/me'
   return '/'
 })
 
@@ -41,6 +39,10 @@ function gotoNotifications() {
 function onLogout() {
   auth.logout()
   router.replace({ name: 'login' })
+}
+
+function gotoMe() {
+  router.push({ name: 'me' })
 }
 
 watch(
@@ -100,12 +102,18 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
             </el-badge>
           </button>
 
-          <div class="user" v-if="auth.isAuthed">
-            <div class="avatar">
-              <span>{{ avatarText }}</span>
-            </div>
-            <button class="logout" type="button" @click="onLogout">退出</button>
-          </div>
+          <el-dropdown v-if="auth.isAuthed" trigger="click" placement="bottom-end">
+            <button type="button" class="user-btn">
+              <div class="avatar"><span>{{ avatarText }}</span></div>
+              <span class="username">{{ auth.username || '我的' }}</span>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="gotoMe">个人中心</el-dropdown-item>
+                <el-dropdown-item divided @click="onLogout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
     </header>
@@ -144,9 +152,9 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(14px);
-  background: rgba(248, 250, 252, 0.8);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  backdrop-filter: blur(10px);
+  background: rgba(248, 249, 250, 0.82);
+  border-bottom: 1px solid var(--ccp-card-border);
 }
 
 .topbar-inner {
@@ -171,7 +179,7 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: var(--ccp-brand-gradient);
+  background: var(--ccp-primary-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -205,22 +213,19 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   font-size: 14px;
   color: var(--ccp-text-secondary);
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    transform 0.1s ease;
+  transition: background var(--ccp-fast), color var(--ccp-fast), transform var(--ccp-fast);
   will-change: transform;
 }
 
 .nav-item:hover {
-  background: rgba(148, 163, 184, 0.1);
+  background: var(--ccp-primary-soft);
   color: var(--ccp-text);
   transform: translateY(-1px);
 }
 
 .nav-item.active {
-  background: var(--ccp-text);
-  color: #f9fafb;
+  background: var(--ccp-primary-gradient);
+  color: #fff;
 }
 
 .right-area {
@@ -239,47 +244,50 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
 }
 
 .icon-btn:hover {
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--ccp-primary-soft);
 }
 
 .bell {
   font-size: 18px;
 }
 
-.user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .avatar {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  background: var(--ccp-text);
+  background: var(--ccp-primary-gradient);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.logout {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
+.user-btn {
+  height: 34px;
   border: 1px solid var(--ccp-card-border);
-  background: var(--ccp-card-bg);
+  background: #fff;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 2px;
+  cursor: pointer;
+}
+
+.user-btn:hover {
+  border-color: #d7def0;
+  box-shadow: 0 4px 12px rgba(42, 92, 255, 0.12);
+}
+
+.username {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--ccp-text-secondary);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-
-.logout:hover {
-  background: #eef2ff;
-  color: var(--ccp-text);
 }
 
 .main {

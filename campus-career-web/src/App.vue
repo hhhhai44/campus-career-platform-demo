@@ -30,15 +30,19 @@
 /* 全站默认排版，与 variables.css 设计变量一致 */
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "PingFang SC",
-    "Microsoft YaHei", sans-serif;
-  background: var(--ccp-page-bg);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: var(--ccp-page-bg-soft);
   color: var(--ccp-text);
   -webkit-font-smoothing: antialiased;
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+#app {
+  min-height: 100vh;
 }
 
 * {
@@ -51,6 +55,7 @@ input,
 textarea,
 select {
   touch-action: manipulation;
+  transition: all var(--ccp-fast);
 }
 
 button:focus-visible,
@@ -64,13 +69,34 @@ select:focus-visible {
 
 .route-fade-enter-active,
 .route-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity var(--ccp-normal), transform var(--ccp-normal);
 }
 
 .route-fade-enter-from,
 .route-fade-leave-to {
   opacity: 0;
   transform: translateY(4px);
+}
+
+.ccp-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ccp-card {
+  border-radius: var(--ccp-card-radius);
+  border: 1px solid var(--ccp-card-border);
+  box-shadow: var(--ccp-card-shadow);
+  background: var(--ccp-card-bg);
+}
+
+.ccp-empty {
+  color: var(--ccp-text-light);
+  font-size: var(--ccp-sub-size);
+  text-align: center;
+  padding: 24px 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
