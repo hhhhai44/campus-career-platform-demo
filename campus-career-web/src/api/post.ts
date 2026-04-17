@@ -1,4 +1,4 @@
-import { deleteJson, getJson, postJson } from '@/api/http'
+import { deleteJson, getJson, postJson, putJson } from '@/api/http'
 
 export type PageRequest = {
   page?: number
@@ -24,6 +24,8 @@ export type PostListItem = {
   authorName: string
   likeCount: number
   favoriteCount: number
+  status?: number | null
+  deleted?: number | null
   /** 当前用户是否已点赞 */
   liked?: boolean
   /** 当前用户是否已收藏 */
@@ -42,6 +44,8 @@ export type PostDetail = {
   authorId: number
   authorName: string
   likeCount: number
+  status?: number | null
+  deleted?: number | null
   /** 当前用户是否已点赞 */
   liked?: boolean
   viewCount: number
@@ -59,6 +63,15 @@ export type CreatePostReq = {
   categoryId: number
 }
 
+export type AdminPostPageRequest = PageRequest & {
+  status?: number | null
+  deleted?: number | null
+}
+
+export type PostModerationReq = {
+  status: number
+}
+
 export const postApi = {
   // POST /forum/post
   create(req: CreatePostReq) {
@@ -72,19 +85,36 @@ export const postApi = {
 
   // GET /forum/post/{id}
   detail(id: number) {
-    return getJson<PostDetail>(`/forum/post/${id}`, { cacheTtlMs: 30 * 1000 })
+    return getJson<PostDetail>(`/forum/post/${id}`)
   },
 
   // DELETE /forum/post/{id}
   delete(id: number) {
-    return deleteJson(`/forum/post/${id}`)
+    return deleteJson<void>(`/forum/post/${id}`)
   },
 
-  // GET /forum/post/my
-  myPosts(page: number, size: number) {
-    return getJson<PageResult<PostListItem>>('/forum/post/my', {
-      params: { page, size },
-      cacheTtlMs: 15 * 1000,
-    })
+  // GET /admin/forum/post/page
+  adminPage(params: AdminPostPageRequest) {
+    return getJson<PageResult<PostListItem>>('/admin/forum/post/page', { params })
+  },
+
+  // GET /admin/forum/post/{id}
+  adminDetail(id: number) {
+    return getJson<PostDetail>(`/admin/forum/post/${id}`)
+  },
+
+  // PUT /admin/forum/post/{id}/status
+  adminReview(id: number, req: PostModerationReq) {
+    return putJson<void, PostModerationReq>(`/admin/forum/post/${id}/status`, req)
+  },
+
+  // DELETE /admin/forum/post/{id}
+  adminDelete(id: number) {
+    return deleteJson<void>(`/admin/forum/post/${id}`)
+  },
+
+  // PUT /admin/forum/post/{id}/restore
+  adminRestore(id: number) {
+    return putJson<void, void>(`/admin/forum/post/${id}/restore`)
   },
 }

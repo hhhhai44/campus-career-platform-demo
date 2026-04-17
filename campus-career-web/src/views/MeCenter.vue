@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { postApi, type PostListItem, type PageResult } from '@/api/post'
+import { notificationApi, type Notification, type PageResult } from '@/api/notification'
 
 const auth = useAuthStore()
-const router = useRouter()
 
-const posts = ref<PostListItem[]>([])
+const notifications = ref<Notification[]>([])
 const loading = ref(false)
 const page = ref(1)
 const size = ref(10)
@@ -17,111 +15,105 @@ const total = ref(0)
 const displayUsername = computed(() => auth.username || '未登录用户')
 const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCase())
 
-async function fetchMyPosts() {
-  if (!auth.isAuthed) {
-    ElMessage.warning('请先登录后查看个人中心')
-    return
-  }
+async function fetchNotifications() {
   loading.value = true
   try {
-    const resp: PageResult<PostListItem> = await postApi.myPosts(page.value, size.value)
-    posts.value = resp.records
+    const resp: PageResult<Notification> = await notificationApi.page({
+      page: page.value,
+      size: size.value,
+    })
+    notifications.value = resp.records
     total.value = resp.total
   } catch {
-    posts.value = []
-    ElMessage.error('加载失败，稍后再试试')
+    notifications.value = []
+    ElMessage.error('通知加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
 }
 
-async function handleDelete(postId: number) {
+async function markOne(id: number) {
   try {
-    await ElMessageBox.confirm('确定要删除吗？这个操作无法撤销。', '删除确认', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
-    await postApi.delete(postId)
-    ElMessage.success('帖子已删除')
-    await fetchMyPosts()
-  } catch (err: any) {
-    if (err !== 'cancel') {
-      ElMessage.error(err?.message || '删除失败')
-    }
+    await notificationApi.markRead(id)
+    await fetchNotifications()
+  } catch {
+    ElMessage.error('标记失败，请稍后重试')
+  }
+}
+
+async function markAll() {
+  try {
+    await notificationApi.markAllRead()
+    await fetchNotifications()
+  } catch {
+    ElMessage.error('操作失败，请稍后重试')
   }
 }
 
 function handlePageChange(p: number) {
   page.value = p
-  fetchMyPosts()
-}
-
-function goToDetail(id: number) {
-  router.push({ name: 'forum-detail', params: { id } })
+  fetchNotifications()
 }
 
 onMounted(() => {
-  if (auth.isAuthed) {
-    fetchMyPosts()
-  }
+  fetchNotifications()
 })
 </script>
 
 <template>
   <div class="me">
-    <div class="header ccp-page-header">
+    <div class="header">
       <div class="title">我的</div>
-      <div class="sub">管理我的内容与互动记录</div>
+      <div class="sub">查看个人通知与互动动态</div>
     </div>
 
-    <div class="user-card ccp-card">
+    <div class="user-card">
       <div class="avatar">
         <span>{{ avatarText }}</span>
       </div>
       <div class="info">
-        <div class="name">欢迎回来</div>
-        <div class="meta">账号：{{ displayUsername }}</div>
+        <div class="name">当前登录用户</div>
+        <div class="meta">用户名: {{ displayUsername }}</div>
       </div>
     </div>
 
-    <el-card class="posts-card ccp-card" shadow="never">
-      <div class="posts-header">
-        <div class="posts-title">我的帖子</div>
+    <el-card class="notify-card" shadow="never">
+      <div class="notify-header">
+        <div class="notify-title">消息通知</div>
+        <el-button text type="primary" @click="markAll">全部标为已读</el-button>
       </div>
 
       <el-skeleton v-if="loading" animated :rows="6" />
 
-      <div v-else class="posts-list">
-        <div v-for="item in posts" :key="item.id" class="post-item">
-          <div class="post-main" @click="goToDetail(item.id)">
-            <div class="post-title">{{ item.title }}</div>
-            <div class="post-summary">{{ item.summary || item.title }}</div>
-            <div class="post-meta">
-              <span class="tag">{{ item.categoryName }}</span>
-              <span class="meta-text">
+      <div v-else class="notify-list">
+        <div v-for="item in notifications" :key="item.id" class="notify-item">
+          <div class="notify-main">
+            <div class="notify-title-line">
+              <span class="dot" :class="{ unread: item.isRead === 0 }"></span>
+              <span class="title-text">{{ item.title }}</span>
+            </div>
+            <div class="content">{{ item.content }}</div>
+            <div class="meta">
+              <span>
                 {{ new Date(item.createTime).toLocaleString() }}
               </span>
               <span class="meta-sep">·</span>
-              <span class="meta-text">浏览 {{ item.viewCount }}</span>
-              <span class="meta-sep">·</span>
-              <span class="meta-text">评论 {{ item.commentCount }}</span>
-              <span class="meta-sep">·</span>
-              <span class="meta-text">点赞 {{ item.likeCount }}</span>
+              <span>{{ item.typeName ?? item.typeDesc ?? `类型${item.type}` }} · {{ item.bizTypeName ?? item.bizTypeDesc ?? `业务${item.bizType}` }}</span>
             </div>
           </div>
-          <div class="post-actions">
+          <div class="notify-actions">
             <el-button
+              v-if="item.isRead === 0"
               link
-              type="danger"
+              type="primary"
               size="small"
-              @click.stop="handleDelete(item.id)"
+              @click="markOne(item.id)"
             >
-              删除
+              标为已读
             </el-button>
           </div>
         </div>
-        <div v-if="!posts.length" class="empty-text">你还没发布过帖子，去分享第一条经验吧！</div>
+        <div v-if="!notifications.length" class="empty-text">暂无通知</div>
       </div>
 
       <div v-if="total > size" class="pager">
@@ -149,9 +141,8 @@ onMounted(() => {
 }
 
 .title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ccp-text);
+  font-size: var(--ccp-title-size);
+  font-weight: var(--ccp-title-weight);
 }
 
 .sub {
@@ -164,15 +155,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px;
-  border-radius: var(--ccp-card-radius);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f9fafb;
 }
 
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
-  background: var(--ccp-primary-gradient);
+  background: #111827;
   color: white;
   display: flex;
   align-items: center;
@@ -184,7 +176,6 @@ onMounted(() => {
 .info .name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--ccp-text);
 }
 
 .info .meta {
@@ -192,88 +183,78 @@ onMounted(() => {
   color: var(--ccp-text-light);
 }
 
-.posts-card {
+.notify-card {
   border-radius: var(--ccp-card-radius);
 }
 
-.posts-header {
+.notify-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.posts-title {
+.notify-title {
   font-size: 16px;
   font-weight: 700;
 }
 
-.posts-list {
+.notify-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.post-item {
+.notify-item {
   display: flex;
   gap: 10px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(243, 244, 246, 0.9);
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.post-item:hover {
-  background-color: rgba(74, 111, 255, 0.03);
-  border-radius: 12px;
-  padding-left: 8px;
-  padding-right: 8px;
-  transform: translateY(-1px);
-}
-
-.post-main {
+.notify-main {
   flex: 1;
 }
 
-.post-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ccp-text);
-  margin-bottom: 6px;
-}
-
-.post-summary {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-.post-meta {
+.notify-title-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  flex-wrap: wrap;
 }
 
-.tag {
-  padding: 2px 8px;
+.dot {
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
-  background: var(--ccp-primary-soft);
-  color: var(--ccp-primary);
-  font-size: 11px;
+  background: #d1d5db;
 }
 
-.meta-text {
+.dot.unread {
+  background: #22c55e;
+}
+
+.title-text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.content {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.meta {
+  margin-top: 4px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
 .meta-sep {
-  color: #d1d5db;
+  margin: 0 4px;
 }
 
-.post-actions {
+.notify-actions {
   display: flex;
   align-items: center;
 }

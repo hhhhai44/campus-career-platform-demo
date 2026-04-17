@@ -19,31 +19,28 @@ import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.UserRoleEnum;
 import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.exception.BusinessException;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtTokenService implements TokenService {
 
-  @Autowired
+  @Resource
   private JwtProperties jwtProperties;
 
-  @Autowired
-  private StringRedisTemplate redisTemplate;
+  @Resource
+  private StringRedisTemplate stringRedisTemplate;
 
   private SecretKey getSecretKey() {
     return Keys.hmacShaKeyFor(
-        jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8)
-    );
+        jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8));
   }
 
   /**
    * 生成 token
-   *
-   * @param user
-   * @return
    */
+  @Override
   public String generateToken(UserEntity user) {
     String jti = UUID.randomUUID().toString();
 
@@ -63,7 +60,7 @@ public class JwtTokenService implements TokenService {
 
     // Redis 里存登录态
     String redisKey = LOGIN_USER_KEY + jti;
-    redisTemplate.opsForValue().set(
+    stringRedisTemplate.opsForValue().set(
         redisKey,
         String.valueOf(user.getId()),
         jwtProperties.getTtl(),
@@ -76,8 +73,8 @@ public class JwtTokenService implements TokenService {
   /**
    * 从token中提取jti（不验证Redis，即使token过期也能获取jti）
    *
-   * @param token
-   * @return
+   * @param token JWT 字符串
+   * @return token 对应的 jti
    */
   public String getJtiFromToken(String token) {
     try {
@@ -96,8 +93,8 @@ public class JwtTokenService implements TokenService {
   /**
    * 解析token获取用户上下文（不验证Redis，但如果token过期会抛出异常）
    *
-   * @param token
-   * @return
+   * @param token JWT 字符串
+   * @return 用户上下文
    * @throws ExpiredJwtException 如果token已过期
    */
   public UserContext parseToken(String token) {
@@ -106,16 +103,22 @@ public class JwtTokenService implements TokenService {
         .build()
         .parseClaimsJws(token)
         .getBody();
+    return buildUserContext(claims);
+  }
 
-    Integer roleCode = claims.get("role", Integer.class);
-    String roleDesc =
-        (roleCode != null && UserRoleEnum.fromCode(roleCode) != null)
-            ? UserRoleEnum.fromCode(roleCode).getDescription()
-            : null;
-    return new UserContext(
-        Long.valueOf(claims.getSubject()),
-        claims.get("username", String.class),
-        roleDesc);
+  @Override
+  public UserContext parseAndValidate(String token) {
+    Claims claims = Jwts.parserBuilder()
+        .setSigningKey(getSecretKey())
+        .build()
+        .parseClaimsJws(token)
+        .getBody();
+
+    String jti = claims.getId();
+    if (jti == null || !stringRedisTemplate.hasKey(LOGIN_USER_KEY + jti)) {
+      throw new BusinessException(ErrorCode.LOGIN_INVALID);
+    }
+    return buildUserContext(claims);
   }
 
   /**
@@ -125,35 +128,13 @@ public class JwtTokenService implements TokenService {
    */
   public void removeLoginState(String jti) {
     String redisKey = LOGIN_USER_KEY + jti;
-    redisTemplate.delete(redisKey);
+    stringRedisTemplate.delete(redisKey);
   }
 
-  /**
-   * token 解析
-   *
-   * @param token
-   * @return
-   */
-  public UserContext parseAndValidate(String token) {
-    Claims claims = Jwts.parserBuilder()
-        .setSigningKey(getSecretKey())
-        .build()
-        .parseClaimsJws(token)
-        .getBody();
-
-    String jti = claims.getId();
-    String redisKey = LOGIN_USER_KEY + jti;
-
-    // Redis 校验登录态
-    if (!redisTemplate.hasKey(redisKey)) {
-      throw new BusinessException(ErrorCode.LOGIN_INVALID);
-    }
-
+  private UserContext buildUserContext(Claims claims) {
     Integer roleCode = claims.get("role", Integer.class);
-    String roleDesc =
-        (roleCode != null && UserRoleEnum.fromCode(roleCode) != null)
-            ? UserRoleEnum.fromCode(roleCode).getDescription()
-            : null;
+    UserRoleEnum roleEnum = UserRoleEnum.fromCode(roleCode);
+    String roleDesc = roleEnum == null ? null : roleEnum.getDescription();
     return new UserContext(
         Long.valueOf(claims.getSubject()),
         claims.get("username", String.class),

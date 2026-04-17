@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { PostListItem } from '@/api/post'
 import { interactionApi } from '@/api/interaction'
+import { useAuthStore } from '@/stores/auth'
 
 const props = withDefaults(
   defineProps<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const likeCount = ref(props.post.likeCount)
 const liked = ref(!!props.post.liked)
@@ -77,13 +79,34 @@ function gotoDetail() {
   if (!props.clickable) return
   router.push({ name: 'forum-detail', params: { id: props.post.id } })
 }
+
+function goMessageAuthor(e: MouseEvent) {
+  e.stopPropagation()
+  if (!props.post.authorId || (auth.userId && auth.userId === props.post.authorId)) return
+  router.push({
+    name: 'message-center',
+    query: { peer: String(props.post.authorId), peerName: props.post.authorName },
+  })
+}
 </script>
 
 <template>
   <el-card class="post-card ccp-card" shadow="never" @click="gotoDetail">
     <div class="post-top">
       <span class="tag">{{ post.categoryName }}</span>
-      <span class="meta-text">{{ post.authorName }}</span>
+      <button
+        v-if="!auth.userId || auth.userId !== post.authorId"
+        type="button"
+        class="author-link"
+        @click="goMessageAuthor"
+      >
+        <span class="author-avatar">{{ post.authorName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+        <span class="meta-text">{{ post.authorName }}</span>
+      </button>
+      <span v-else class="author-link author-text">
+        <span class="author-avatar">{{ post.authorName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+        <span class="meta-text">{{ post.authorName }}</span>
+      </span>
     </div>
     <div class="title">{{ post.title }}</div>
     <div class="meta">
@@ -178,6 +201,45 @@ function gotoDetail() {
 
 .meta-text {
   color: var(--ccp-text-muted);
+}
+
+.author-link {
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.author-text {
+  cursor: default;
+}
+
+.author-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ccp-primary-gradient);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.author-link .meta-text {
+  color: var(--ccp-primary);
+}
+
+.author-link:hover .meta-text {
+  text-decoration: underline;
+}
+
+.author-text:hover .meta-text {
+  text-decoration: none;
 }
 
 .meta-dot {

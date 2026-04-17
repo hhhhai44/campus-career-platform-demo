@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { commentApi, type PostComment } from '@/api/comment'
 
@@ -12,10 +13,23 @@ const props = defineProps<{
 const emit = defineEmits<{
   refresh: []
   reply: [comment: PostComment]
+  report: [comment: PostComment]
 }>()
 
 const auth = useAuthStore()
+const router = useRouter()
 const likeLoadingMap = reactive<Record<number, boolean>>({})
+
+function goMessage(userId: number | null | undefined, userName?: string | null) {
+  if (!userId || (auth.userId && auth.userId === userId)) return
+  router.push({
+    name: 'message-center',
+    query: {
+      peer: String(userId),
+      ...(userName ? { peerName: userName } : {}),
+    },
+  })
+}
 
 async function handleDelete(comment: PostComment) {
   try {
@@ -38,6 +52,10 @@ function handleReply(comment: PostComment) {
   emit('reply', comment)
 }
 
+function handleReport(comment: PostComment) {
+  emit('report', comment)
+}
+
 async function handleLike(comment: PostComment) {
   if (!auth.isAuthed || likeLoadingMap[comment.id]) return
   likeLoadingMap[comment.id] = true
@@ -57,14 +75,37 @@ async function handleLike(comment: PostComment) {
   <div class="comment-list">
     <div v-for="item in props.comments" :key="item.id" class="comment ccp-card">
       <div class="comment-header">
-        <div class="avatar">
+        <button
+          v-if="!auth.userId || auth.userId !== item.fromUserId"
+          class="avatar"
+          type="button"
+          @click="goMessage(item.fromUserId, item.fromUserName)"
+        >
           {{ item.fromUserName?.slice(0, 1)?.toUpperCase() || 'U' }}
-        </div>
+        </button>
+        <span v-else class="avatar avatar-static">{{ item.fromUserName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
         <div class="comment-main">
           <div class="line">
-            <span class="author">{{ item.fromUserName || '未知用户' }}</span>
+            <button
+              v-if="!auth.userId || auth.userId !== item.fromUserId"
+              type="button"
+              class="author user-link"
+              @click="goMessage(item.fromUserId, item.fromUserName)"
+            >
+              {{ item.fromUserName || '未知用户' }}
+            </button>
+            <span v-else class="author">{{ item.fromUserName || '未知用户' }}</span>
             <span v-if="item.toUserName" class="reply-to">
-              回复 <span class="author">{{ item.toUserName }}</span>
+              回复
+              <button
+                v-if="item.toUserId && (!auth.userId || auth.userId !== item.toUserId)"
+                type="button"
+                class="author user-link"
+                @click="goMessage(item.toUserId, item.toUserName)"
+              >
+                {{ item.toUserName }}
+              </button>
+              <span v-else class="author">{{ item.toUserName }}</span>
             </span>
             <span class="time">
               {{ new Date(item.createTime).toLocaleString() }}
@@ -87,6 +128,15 @@ async function handleLike(comment: PostComment) {
               回复
             </el-button>
             <el-button
+              v-if="auth.isAuthed && auth.userId !== item.fromUserId"
+              text
+              type="danger"
+              size="small"
+              @click="handleReport(item)"
+            >
+              举报
+            </el-button>
+            <el-button
               v-if="auth.isAuthed"
               text
               type="danger"
@@ -104,6 +154,7 @@ async function handleLike(comment: PostComment) {
           :post-id="postId"
           @refresh="emit('refresh')"
           @reply="emit('reply', $event)"
+          @report="emit('report', $event)"
         />
       </div>
     </div>
@@ -142,6 +193,12 @@ async function handleLike(comment: PostComment) {
   font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.avatar-static {
+  cursor: default;
 }
 
 .comment-main {
@@ -159,6 +216,18 @@ async function handleLike(comment: PostComment) {
 .author {
   font-weight: 700;
   color: var(--ccp-text);
+}
+
+.user-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ccp-primary);
+}
+
+.user-link:hover {
+  text-decoration: underline;
 }
 
 .reply-to {

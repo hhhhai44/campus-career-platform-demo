@@ -4,8 +4,10 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { postApi, type PostListItem } from '@/api/post'
 import { resourceApi, type ResourceListItem } from '@/api/resource'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const posts = ref<PostListItem[]>([])
 const resources = ref<ResourceListItem[]>([])
@@ -40,6 +42,26 @@ async function fetchResources() {
 
 function gotoPost(id: number) {
   router.push({ name: 'forum-detail', params: { id } })
+}
+
+function gotoAuthorMessage(e: MouseEvent, userId: number) {
+  e.stopPropagation()
+  if (auth.userId && auth.userId === userId) return
+  const matched = posts.value.find((item) => item.authorId === userId)
+  router.push({
+    name: 'message-center',
+    query: { peer: String(userId), peerName: matched?.authorName },
+  })
+}
+
+function gotoUploaderMessage(e: MouseEvent, userId: number) {
+  e.stopPropagation()
+  if (auth.userId && auth.userId === userId) return
+  const matched = resources.value.find((item) => item.uploaderId === userId)
+  router.push({
+    name: 'message-center',
+    query: { peer: String(userId), peerName: matched?.uploaderName },
+  })
 }
 
 function gotoResource(id: number) {
@@ -100,7 +122,15 @@ onMounted(() => {
             <div class="post-title">{{ item.title }}</div>
             <div class="post-meta">
               <span class="tag">{{ item.categoryName }}</span>
-              <span class="meta-text">{{ item.authorName }}</span>
+              <button
+                v-if="!auth.userId || auth.userId !== item.authorId"
+                type="button"
+                class="author-link"
+                @click="gotoAuthorMessage($event, item.authorId)"
+              >
+                {{ item.authorName }}
+              </button>
+              <span v-else class="author-link author-text">{{ item.authorName }}</span>
               <span class="meta-dot">·</span>
               <span class="meta-text">
                 {{ new Date(item.createTime).toLocaleString() }}
@@ -139,7 +169,15 @@ onMounted(() => {
             <div class="resource-meta">
               <span class="meta-text">{{ res.categoryName }}</span>
               <span class="meta-dot">·</span>
-              <span class="meta-text">{{ res.uploaderName }}</span>
+              <button
+                v-if="!auth.userId || auth.userId !== res.uploaderId"
+                type="button"
+                class="author-link"
+                @click="gotoUploaderMessage($event, res.uploaderId)"
+              >
+                {{ res.uploaderName }}
+              </button>
+              <span v-else class="author-link author-text">{{ res.uploaderName }}</span>
             </div>
             <div v-if="res.description" class="resource-desc">
               {{ res.description }}
@@ -292,6 +330,27 @@ onMounted(() => {
 
 .meta-text {
   color: var(--ccp-text-muted);
+}
+
+.author-link {
+  border: 0;
+  background: transparent;
+  color: var(--ccp-primary);
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.author-text {
+  cursor: default;
+}
+
+.author-link:hover {
+  text-decoration: underline;
+}
+
+.author-text:hover {
+  text-decoration: none;
 }
 
 .meta-dot {

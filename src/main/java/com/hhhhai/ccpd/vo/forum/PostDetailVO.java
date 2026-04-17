@@ -25,6 +25,12 @@ public class PostDetailVO {
 
   private Integer likeCount;
 
+  /** 帖子状态：1-正常 0-禁用 */
+  private Integer status;
+
+  /** 逻辑删除：0-未删除 1-已删除 */
+  private Integer deleted;
+
   /** 当前用户是否已点赞（需登录，未登录为 false） */
   private Boolean liked;
 

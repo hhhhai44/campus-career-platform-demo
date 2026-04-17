@@ -43,13 +43,15 @@ public class RedisConstants {
   public static final String USER_NOTIFICATION_UNREAD_COUNT_KEY = "user:notification:count:";
 
   /**
-   * 论坛分类列表缓存 key：forum:category:list
+   * 用户未读私信数量 key 前缀，完整 key = user:private-message:count:{userId}
+   */
+  public static final String USER_PRIVATE_MESSAGE_UNREAD_COUNT_KEY = "user:private-message:count:";
+
+  /**
+   * 论坛帖子分类列表缓存 key
    */
   public static final String FORUM_CATEGORY_LIST_KEY = "forum:category:list";
 
-  /**
-   * 资源分类列表缓存 key：resource:category:list
-   */
   public static final String RESOURCE_CATEGORY_LIST_KEY = "resource:category:list";
 
   /**

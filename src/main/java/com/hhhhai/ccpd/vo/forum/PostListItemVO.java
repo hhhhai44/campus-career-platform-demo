@@ -29,6 +29,12 @@ public class PostListItemVO {
   /** 收藏数量 */
   private Integer favoriteCount;
 
+  /** 帖子状态：1-正常 0-禁用 */
+  private Integer status;
+
+  /** 逻辑删除：0-未删除 1-已删除 */
+  private Integer deleted;
+
   private Integer viewCount;
 
   private Integer commentCount;

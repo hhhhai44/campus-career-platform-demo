@@ -36,10 +36,10 @@ export type ResourceDetail = {
   scoreCount: number
   likeCount: number
   favoriteCount: number
-  liked?: boolean
-  favorited?: boolean
-  owner?: boolean
-  hasRated?: boolean
+  liked: boolean
+  favorited: boolean
+  owner: boolean
+  hasRated: boolean
   downloadCount: number
   createTime: string
 }
@@ -65,7 +65,12 @@ export const resourceApi = {
 
   // GET /resource/{id}
   detail(id: number) {
-    return getJson<ResourceDetail>(`/resource/${id}`, { cacheTtlMs: 30 * 1000 })
+    return getJson<ResourceDetail>(`/resource/${id}`)
+  },
+
+  // POST /resource/{id}/download
+  download(id: number) {
+    return postJson<string, unknown>(`/resource/${id}/download`)
   },
 
   // POST /resource/{id}/like/toggle
@@ -76,10 +81,5 @@ export const resourceApi = {
   // POST /resource/{id}/favorite/toggle
   favoriteToggle(id: number) {
     return postJson<FavoriteToggleResp, unknown>(`/resource/${id}/favorite/toggle`)
-  },
-
-  // POST /resource/{id}/download
-  download(id: number) {
-    return postJson<string, unknown>(`/resource/${id}/download`)
   },
 }

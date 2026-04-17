@@ -41,7 +41,7 @@ public class PostCategoryServiceImpl implements PostCategoryService {
     String json = stringRedisTemplate.opsForValue().get(key);
     if (StringUtils.hasText(json)) {
       try {
-        return objectMapper.readValue(json, new TypeReference<List<CategoryListItemVO>>() {});
+        return objectMapper.readValue(json, new TypeReference<>() {});
       } catch (Exception ignored) {
       }
     }
@@ -56,7 +56,9 @@ public class PostCategoryServiceImpl implements PostCategoryService {
         .collect(Collectors.toList());
 
     try {
-      stringRedisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(voList), CATEGORY_LIST_TTL_MINUTES, TimeUnit.MINUTES);
+      stringRedisTemplate.opsForValue()
+          .set(key, objectMapper.writeValueAsString(voList), CATEGORY_LIST_TTL_MINUTES,
+              TimeUnit.MINUTES);
     } catch (Exception ignored) {
     }
     return voList;

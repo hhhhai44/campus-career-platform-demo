@@ -1,5 +1,6 @@
 package com.hhhhai.ccpd.common.config;
 
+import com.hhhhai.ccpd.interceptor.AdminInterceptor;
 import com.hhhhai.ccpd.interceptor.AccessLogInterceptor;
 import com.hhhhai.ccpd.interceptor.LoginInterceptor;
 import com.hhhhai.ccpd.interceptor.RefreshTokenInterceptor;
@@ -16,6 +17,9 @@ public class MvcConfig implements WebMvcConfigurer {
 
   @Resource
   private RefreshTokenInterceptor refreshTokenInterceptor;
+
+  @Resource
+  private AdminInterceptor adminInterceptor;
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
@@ -38,16 +42,21 @@ public class MvcConfig implements WebMvcConfigurer {
             "/forum/post/*/like/toggle",
             "/forum/post/*/favorite",
             "/forum/post/*/favorite/toggle",
+            "/admin/**",
             "/resource",
             "/resource/rating",
             "/resource/comment",
             "/resource/comment/**",
-            "/notification/**"
+            "/report"
         )
         .excludePathPatterns(
             "/auth/login",
             "/auth/register"
         )
         .order(2);
+
+    registry.addInterceptor(adminInterceptor)
+        .addPathPatterns("/admin/**")
+        .order(3);
   }
 }

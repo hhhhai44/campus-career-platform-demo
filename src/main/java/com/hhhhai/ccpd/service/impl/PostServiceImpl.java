@@ -10,32 +10,30 @@ import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.PostCategoryEnum;
-import com.hhhhai.ccpd.exception.BusinessException;
+import com.hhhhai.ccpd.common.enums.UserRoleEnum;
 import com.hhhhai.ccpd.dto.forum.PostCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCategoryEntity;
-import com.hhhhai.ccpd.entity.forum.PostCommentEntity;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
 import com.hhhhai.ccpd.entity.forum.PostFavoriteEntity;
 import com.hhhhai.ccpd.entity.forum.PostLikeEntity;
+import com.hhhhai.ccpd.entity.user.UserEntity;
+import com.hhhhai.ccpd.exception.BusinessException;
 import com.hhhhai.ccpd.mapper.PostCategoryMapper;
-import com.hhhhai.ccpd.mapper.PostMapper;
-import com.hhhhai.ccpd.mapper.PostCommentMapper;
 import com.hhhhai.ccpd.mapper.PostFavoriteMapper;
 import com.hhhhai.ccpd.mapper.PostLikeMapper;
+import com.hhhhai.ccpd.mapper.PostMapper;
 import com.hhhhai.ccpd.mapper.UserMapper;
-import com.hhhhai.ccpd.entity.user.UserEntity;
 import com.hhhhai.ccpd.service.PostService;
 import com.hhhhai.ccpd.vo.forum.PostDetailVO;
 import com.hhhhai.ccpd.vo.forum.PostListItemVO;
 import jakarta.annotation.Resource;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
@@ -62,14 +60,11 @@ public class PostServiceImpl implements PostService {
   @Resource
   private UserMapper userMapper;
 
-  @Resource
-  private PostCommentMapper postCommentMapper;
-
   @Override
   public Long createPost(PostCreateDTO dto) {
     UserContext user = UserContextHolder.getUser();
     if (user == null || user.getUserId() == null) {
-      throw new BusinessException(ErrorCode.NOT_LOGIN);
+      throw new RuntimeException("未登录，无法发帖");
     }
 
     PostEntity entity = new PostEntity();
@@ -89,88 +84,53 @@ public class PostServiceImpl implements PostService {
 
   @Override
   public Page<PostListItemVO> pagePostList(Long page, Long size, String keyword, Long categoryId) {
-    Page<PostEntity> pageParam = new Page<>(page, size);
+    return queryPostPage(page, size, keyword, categoryId, ContentStatusEnum.NORMAL,
+        LogicDeleteEnum.NOT_DELETED, null);
+  }
 
-    LambdaQueryWrapper<PostEntity> wrapper = new LambdaQueryWrapper<>();
-    wrapper.eq(PostEntity::getStatus, ContentStatusEnum.NORMAL);
-    wrapper.eq(PostEntity::getDeleted, LogicDeleteEnum.NOT_DELETED);
-    if (StringUtils.hasText(keyword)) {
-      wrapper.like(PostEntity::getTitle, keyword);
+  @Override
+  public Page<PostListItemVO> pageMyPosts(Long page, Long size) {
+    UserContext user = requireLogin();
+    return queryPostPage(page, size, null, null, null, LogicDeleteEnum.NOT_DELETED, user.getUserId());
+  }
+
+  @Override
+  public Page<PostListItemVO> pageAdminPosts(Long page, Long size, String keyword, Long categoryId,
+      Integer status, Integer deleted) {
+    Integer statusParam = deleted != null && deleted == 1 ? null : status;
+    Page<PostEntity> entityPage = new Page<>(page, size);
+    List<PostEntity> records = postMapper.selectAdminPage(entityPage, keyword, categoryId, statusParam, deleted);
+    entityPage.setRecords(records);
+    if ((entityPage.getTotal() <= 0) && records != null && !records.isEmpty()) {
+      Long total = postMapper.countAdminPage(keyword, categoryId, statusParam, deleted);
+      entityPage.setTotal(total == null ? 0 : total);
     }
-    if (categoryId != null) {
-      wrapper.eq(PostEntity::getCategoryId, categoryId);
-    }
-    wrapper.orderByDesc(PostEntity::getIsTop)
-        .orderByDesc(PostEntity::getCreateTime);
-
-    Page<PostEntity> entityPage = postMapper.selectPage(pageParam, wrapper);
-
-    List<PostEntity> records = entityPage.getRecords();
-    if (records.isEmpty()) {
-      return new Page<>(page, size);
-    }
-
-    Map<Long, Long> commentCountMap = loadPostCommentCountMap(records);
-
-    // 批量查询分类名称
-    List<Long> categoryIds =
-        records.stream().map(PostEntity::getCategoryId).distinct().collect(Collectors.toList());
-    Map<Long, String> categoryNameMap =
-        postCategoryMapper.selectBatchIds(categoryIds).stream()
-            .collect(Collectors.toMap(PostCategoryEntity::getId, PostCategoryEntity::getName));
-
-    // 批量查询作者信息
-    List<Long> authorIds = records.stream()
-        .map(PostEntity::getAuthorId)
-        .distinct()
-        .collect(Collectors.toList());
-    final Map<Long, String> authorNameMap;
-    if (!authorIds.isEmpty()) {
-      List<UserEntity> authors = userMapper.selectBatchIds(authorIds);
-      authorNameMap = authors.stream()
-          .collect(Collectors.toMap(UserEntity::getId,
-              u -> u.getRealName() != null && !u.getRealName().trim().isEmpty()
-                  ? u.getRealName() : u.getUsername()));
-    } else {
-      authorNameMap = new HashMap<>();
-    }
-
-    // 构建VO并填充点赞数量（从Redis获取）
-    List<PostListItemVO> voList =
-        records.stream()
-            .map(
-                entity -> {
-                  PostListItemVO vo = new PostListItemVO();
-                  BeanUtils.copyProperties(entity, vo);
-                  String categoryName = categoryNameMap.get(entity.getCategoryId());
-                  if (categoryName == null && entity.getCategoryId() != null) {
-                    categoryName = PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
-                  }
-                  vo.setCategoryName(categoryName);
-                  vo.setSummary(buildSummary(entity.getContent(), 96));
-                  vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
-                  vo.setAuthorName(authorNameMap.getOrDefault(entity.getAuthorId(), "未知用户"));
-                  vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
-                  vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
-                  return vo;
-                })
-            .collect(Collectors.toList());
-
-    Page<PostListItemVO> result = new Page<>(page, size, entityPage.getTotal());
-    result.setRecords(voList);
-    return result;
+    return convertToPostListPage(entityPage, page, size);
   }
 
   @Override
   public PostDetailVO getPostDetail(Long postId) {
-    PostEntity entity = postMapper.selectById(postId);
-    if (entity == null || entity.getDeleted() == LogicDeleteEnum.DELETED) {
+    return buildPostDetail(postId, false, true);
+  }
+
+  @Override
+  public PostDetailVO getAdminPostDetail(Long postId) {
+    ensureAdmin();
+    return buildPostDetail(postId, true, false);
+  }
+
+  private PostDetailVO buildPostDetail(Long postId, boolean allowHidden, boolean increaseViewCount) {
+    PostEntity entity = getExistingPost(postId, allowHidden);
+    if (!allowHidden
+        && (entity.getDeleted() == LogicDeleteEnum.DELETED || entity.getStatus() == ContentStatusEnum.DISABLED)) {
       return null;
     }
 
-    // 仅自增浏览量，避免 updateById 覆盖其他并发更新字段（如 comment_count）
-    postMapper.incrementViewCount(postId);
-    entity = postMapper.selectById(postId);
+    if (increaseViewCount) {
+      // 累计浏览量（简单处理：数据库字段自增）
+      entity.setViewCount(entity.getViewCount() == null ? 1 : entity.getViewCount() + 1);
+      postMapper.updateById(entity);
+    }
 
     PostDetailVO vo = new PostDetailVO();
     BeanUtils.copyProperties(entity, vo);
@@ -189,10 +149,14 @@ public class PostServiceImpl implements PostService {
     // 默认 false，避免序列化缺失时前端首屏状态错误
     vo.setLiked(false);
     vo.setFavorited(false);
+    vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
+    vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+    vo.setAuthorName(loadAuthorName(entity.getAuthorId()));
 
     UserContext user = UserContextHolder.getUser();
     if (user != null && user.getUserId() != null) {
       Long userId = user.getUserId();
+      vo.setCurrentUserId(userId);
 
       LambdaQueryWrapper<PostLikeEntity> likeWrapper = new LambdaQueryWrapper<>();
       likeWrapper.eq(PostLikeEntity::getPostId, postId).eq(PostLikeEntity::getUserId, userId);
@@ -204,104 +168,176 @@ public class PostServiceImpl implements PostService {
       vo.setFavorited(postFavoriteMapper.selectCount(favoriteWrapper) > 0);
     }
 
-    // 查询作者信息
-    if (entity.getAuthorId() != null) {
-      UserEntity author = userMapper.selectById(entity.getAuthorId());
-      if (author != null) {
-        vo.setAuthorName(author.getRealName() != null && !author.getRealName().trim().isEmpty()
-            ? author.getRealName() : author.getUsername());
-      } else {
-        vo.setAuthorName("未知用户");
-      }
-    } else {
-      vo.setAuthorName("未知用户");
-    }
-
-    // 设置当前登录用户ID（复用上面已获取的user变量）
-    if (user != null && user.getUserId() != null) {
-      vo.setCurrentUserId(user.getUserId());
-    }
-
     return vo;
   }
 
   @Override
-  @Transactional
   public void deletePost(Long postId) {
-    UserContext user = UserContextHolder.getUser();
-    if (user == null || user.getUserId() == null) {
-      throw new BusinessException(ErrorCode.NOT_LOGIN);
-    }
-
-    PostEntity post = postMapper.selectById(postId);
-    if (post == null || post.getDeleted() == LogicDeleteEnum.DELETED) {
-      throw new BusinessException(ErrorCode.PARAM_INVALID);
-    }
-
-    // 只能删除自己的帖子
-    if (!post.getAuthorId().equals(user.getUserId())) {
-      throw new BusinessException(ErrorCode.NOT_LOGIN);
-    }
-
-    // 逻辑删除帖子
-    post.setDeleted(LogicDeleteEnum.DELETED);
-    postMapper.updateById(post);
+    softDeletePost(postId);
   }
 
   @Override
-  public Page<PostListItemVO> pageMyPosts(Long page, Long size) {
-    UserContext user = UserContextHolder.getUser();
-    if (user == null || user.getUserId() == null) {
-      throw new BusinessException(ErrorCode.NOT_LOGIN);
+  public void reviewPost(Long postId, Integer status) {
+    ensureAdmin();
+    PostEntity entity = getExistingPost(postId, true);
+    ContentStatusEnum statusEnum = ContentStatusEnum.fromCode(status);
+    if (statusEnum == null) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
     }
+    entity.setStatus(statusEnum);
+    postMapper.updateById(entity);
+  }
 
+  @Override
+  public void softDeletePost(Long postId) {
+    PostEntity entity = getExistingPost(postId, false);
+    ensureOwnerOrAdmin(entity);
+    postMapper.deleteById(postId);
+  }
+
+  @Override
+  public void restorePost(Long postId) {
+    ensureAdmin();
+    int updated = postMapper.restoreById(postId);
+    if (updated <= 0) {
+      throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+    }
+  }
+
+  private Page<PostListItemVO> queryPostPage(Long page, Long size, String keyword, Long categoryId,
+      ContentStatusEnum status, LogicDeleteEnum deleted, Long authorId) {
     Page<PostEntity> pageParam = new Page<>(page, size);
 
     LambdaQueryWrapper<PostEntity> wrapper = new LambdaQueryWrapper<>();
-    wrapper.eq(PostEntity::getAuthorId, user.getUserId())
-        .eq(PostEntity::getDeleted, LogicDeleteEnum.NOT_DELETED)
+    if (status != null) {
+      wrapper.eq(PostEntity::getStatus, status);
+    }
+    if (deleted != null) {
+      wrapper.eq(PostEntity::getDeleted, deleted);
+    }
+    if (StringUtils.hasText(keyword)) {
+      wrapper.like(PostEntity::getTitle, keyword);
+    }
+    if (categoryId != null) {
+      wrapper.eq(PostEntity::getCategoryId, categoryId);
+    }
+    if (authorId != null) {
+      wrapper.eq(PostEntity::getAuthorId, authorId);
+    }
+    wrapper.orderByDesc(PostEntity::getIsTop)
         .orderByDesc(PostEntity::getCreateTime);
 
     Page<PostEntity> entityPage = postMapper.selectPage(pageParam, wrapper);
+    return convertToPostListPage(entityPage, page, size);
+  }
 
+  private Page<PostListItemVO> convertToPostListPage(Page<PostEntity> entityPage, Long page, Long size) {
     List<PostEntity> records = entityPage.getRecords();
     if (records.isEmpty()) {
-      return new Page<>(page, size);
+      Page<PostListItemVO> empty = new Page<>(page, size, entityPage.getTotal());
+      empty.setRecords(Collections.emptyList());
+      return empty;
     }
 
-    Map<Long, Long> commentCountMap = loadPostCommentCountMap(records);
+    Map<Long, String> authorNameMap = loadAuthorNameMap(records);
+    Map<Long, String> categoryNameMap = loadCategoryNameMap(records);
 
-    // 批量查询分类名称
-    List<Long> categoryIds =
-        records.stream().map(PostEntity::getCategoryId).distinct().collect(Collectors.toList());
-    Map<Long, String> categoryNameMap =
-        postCategoryMapper.selectBatchIds(categoryIds).stream()
-            .collect(Collectors.toMap(PostCategoryEntity::getId, PostCategoryEntity::getName));
-
-    // 构建VO
-    List<PostListItemVO> voList =
-        records.stream()
-            .map(
-                entity -> {
-                  PostListItemVO vo = new PostListItemVO();
-                  BeanUtils.copyProperties(entity, vo);
-                  String categoryName = categoryNameMap.get(entity.getCategoryId());
-                  if (categoryName == null && entity.getCategoryId() != null) {
-                    categoryName = PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
-                  }
-                  vo.setCategoryName(categoryName);
-                  vo.setSummary(buildSummary(entity.getContent(), 96));
-                  vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
-                  vo.setAuthorName(user.getUsername());
-                  vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
-                  vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
-                  return vo;
-                })
-            .collect(Collectors.toList());
+    List<PostListItemVO> voList = records.stream().map(entity -> {
+      PostListItemVO vo = new PostListItemVO();
+      BeanUtils.copyProperties(entity, vo);
+      String categoryName = categoryNameMap.get(entity.getCategoryId());
+      if (categoryName == null && entity.getCategoryId() != null) {
+        categoryName = PostCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
+      }
+      vo.setCategoryName(categoryName);
+      vo.setAuthorName(authorNameMap.getOrDefault(entity.getAuthorId(), "用户" + entity.getAuthorId()));
+      vo.setSummary(buildSummary(entity.getContent(), 96));
+      vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
+      vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
+      vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
+      vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+      return vo;
+    }).collect(Collectors.toList());
 
     Page<PostListItemVO> result = new Page<>(page, size, entityPage.getTotal());
     result.setRecords(voList);
     return result;
+  }
+
+  private PostEntity getExistingPost(Long postId, boolean includeDeleted) {
+    if (postId == null) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+    PostEntity entity = includeDeleted ? postMapper.selectByIdIncludingDeleted(postId) : postMapper.selectById(postId);
+    if (entity == null) {
+      throw new BusinessException(ErrorCode.POST_NOT_FOUND);
+    }
+    return entity;
+  }
+
+  private UserContext requireLogin() {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+    return user;
+  }
+
+  private void ensureAdmin() {
+    UserContext user = requireLogin();
+    if (user.getRole() == null) {
+      throw new BusinessException(ErrorCode.ADMIN_FORBIDDEN);
+    }
+    boolean admin = UserRoleEnum.ADMIN.getDescription().equals(user.getRole())
+        || String.valueOf(UserRoleEnum.ADMIN.getCode()).equals(user.getRole());
+    if (!admin) {
+      throw new BusinessException(ErrorCode.ADMIN_FORBIDDEN);
+    }
+  }
+
+  private void ensureOwnerOrAdmin(PostEntity entity) {
+    UserContext user = requireLogin();
+    boolean owner = entity.getAuthorId() != null && entity.getAuthorId().equals(user.getUserId());
+    boolean admin = user.getRole() != null && (UserRoleEnum.ADMIN.getDescription().equals(user.getRole())
+        || String.valueOf(UserRoleEnum.ADMIN.getCode()).equals(user.getRole()));
+    if (!owner && !admin) {
+      throw new BusinessException(ErrorCode.POST_FORBIDDEN);
+    }
+  }
+
+  private Map<Long, String> loadAuthorNameMap(List<PostEntity> records) {
+    List<Long> authorIds = records.stream().map(PostEntity::getAuthorId).distinct().collect(Collectors.toList());
+    if (authorIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return userMapper.selectBatchIds(authorIds).stream().collect(Collectors.toMap(
+        UserEntity::getId,
+        item -> item.getUsername() == null ? "用户" + item.getId() : item.getUsername(),
+        (left, right) -> left
+    ));
+  }
+
+  private String loadAuthorName(Long authorId) {
+    if (authorId == null) {
+      return null;
+    }
+    UserEntity author = userMapper.selectById(authorId);
+    if (author == null || !StringUtils.hasText(author.getUsername())) {
+      return "用户" + authorId;
+    }
+    return author.getUsername();
+  }
+
+  private Map<Long, String> loadCategoryNameMap(List<PostEntity> records) {
+    List<Long> categoryIds = records.stream().map(PostEntity::getCategoryId).distinct().collect(Collectors.toList());
+    if (categoryIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return postCategoryMapper.selectBatchIds(categoryIds).stream().collect(Collectors.toMap(
+        PostCategoryEntity::getId,
+        PostCategoryEntity::getName,
+        (left, right) -> left
+    ));
   }
 
   /**
@@ -337,18 +373,5 @@ public class PostServiceImpl implements PostService {
       return normalized;
     }
     return normalized.substring(0, maxLen) + "...";
-  }
-
-  private Map<Long, Long> loadPostCommentCountMap(List<PostEntity> posts) {
-    List<Long> postIds = posts.stream().map(PostEntity::getId).collect(Collectors.toList());
-    if (postIds.isEmpty()) {
-      return new HashMap<>();
-    }
-    return postCommentMapper.selectList(
-            new LambdaQueryWrapper<PostCommentEntity>()
-                .in(PostCommentEntity::getPostId, postIds)
-                .eq(PostCommentEntity::getStatus, ContentStatusEnum.NORMAL))
-        .stream()
-        .collect(Collectors.groupingBy(PostCommentEntity::getPostId, Collectors.counting()));
   }
 }

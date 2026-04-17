@@ -17,11 +17,24 @@ public enum ErrorCode {
   NOT_LOGIN(20007, "请先登录"),
   PASSWORD_FORMAT_ERROR(20008, "密码格式不正确"),
   LOGIN_INVALID(20009, "登录已失效，请重新登录"),
+  ADMIN_FORBIDDEN(20010, "无管理员权限"),
 
   // 资源相关
   RESOURCE_NOT_FOUND(30001, "资源不存在"),
   RESOURCE_SELF_RATE_FORBIDDEN(30002, "不能给自己上传的资源评分"),
-  RESOURCE_ALREADY_RATED(30003, "您已评分，不能重复评分");
+  RESOURCE_ALREADY_RATED(30003, "您已评分，不能重复评分"),
+
+  // 帖子相关
+  POST_NOT_FOUND(30004, "帖子不存在"),
+  POST_FORBIDDEN(30005, "无权操作该帖子"),
+
+  // 举报相关
+  REPORT_NOT_FOUND(40001, "举报不存在"),
+  REPORT_INVALID(40002, "举报信息不完整"),
+  REPORT_HANDLED(40003, "举报已处理"),
+
+  // 用户管理相关
+  USER_STATUS_INVALID(50001, "用户状态不合法");
 
   private final int code;
   private final String message;

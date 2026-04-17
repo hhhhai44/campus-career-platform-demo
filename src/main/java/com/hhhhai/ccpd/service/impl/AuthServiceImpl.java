@@ -30,62 +30,72 @@ public class AuthServiceImpl implements AuthService {
   @Resource
   private PasswordEncoder passwordEncoder;
 
+  @Override
   public LoginVO login(LoginDTO request) {
-    String username = request.getUsername();
+    String username = request.getUsername() == null ? "" : request.getUsername().trim();
+    String password = request.getPassword();
+    if (username.isEmpty() || password == null || password.isEmpty()) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
 
     log.debug("登录请求参数: {}", request);
-    // 2. 查用户
+
     UserEntity user = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
         .eq(UserEntity::getUsername, username));
-
-    if(user == null){
+    if (user == null) {
       throw new BusinessException(ErrorCode.USER_NOT_FOUND);
     }
-    log.debug("查询到用户信息: {}", user);
 
-    // 4. 校验密码
-    log.debug("开始校验密码");
-    if (!passwordEncoder.matches(user.getPassword(), request.getPassword())) {
+    if (user.getStatus() != null && !user.getStatus().canLogin()) {
+      throw new BusinessException(ErrorCode.USER_BANNED);
+    }
+
+    if (!Boolean.TRUE.equals(passwordEncoder.matches(user.getPassword(), password))) {
       throw new BusinessException(ErrorCode.PASSWORD_ERROR);
     }
 
-    // 5. 生成 token
+    user.setLastLoginTime(java.time.LocalDateTime.now());
+    userMapper.updateById(user);
+
     log.debug("开始生成令牌");
     String token = tokenService.generateToken(user);
 
-    // 6. 返回用例结果
     return new LoginVO(token, 3600L);
   }
 
   @Override
   public void register(RegisterDTO request) {
-    // 1. 校验密码一致性
+    if (request == null || request.getUsername() == null || request.getPassword() == null
+        || request.getConfirmPassword() == null) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
+    String username = request.getUsername().trim();
+    if (username.isEmpty()) {
+      throw new BusinessException(ErrorCode.PARAM_INVALID);
+    }
+
     if (!request.getPassword().equals(request.getConfirmPassword())) {
       throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
     }
 
-    // 2. 校验用户名是否已存在
     UserEntity exists = userMapper.selectOne(Wrappers.<UserEntity>lambdaQuery()
-        .eq(UserEntity::getUsername, request.getUsername()));
+        .eq(UserEntity::getUsername, username));
     if (exists != null) {
       throw new BusinessException(ErrorCode.USER_EXIST);
     }
 
-    // 3. 构建用户实体
     UserEntity user = new UserEntity();
-    user.setUsername(request.getUsername());
+    user.setUsername(username);
     user.setPassword(passwordEncoder.encode(request.getPassword()));
     user.setRealName(request.getRealName());
     user.setStudentNo(request.getStudentNo());
     user.setEmail(request.getEmail());
     user.setPhone(request.getPhone());
-    // 默认角色：学生
     user.setRole(UserRoleEnum.STUDENT);
-    // 默认状态：正常
     user.setStatus(UserStatusEnum.ENABLED);
     user.setLoginFailCount(0);
 
-    // 4. 插入数据库
     int insert = userMapper.insert(user);
     if (insert <= 0) {
       throw new BusinessException(ErrorCode.SYSTEM_ERROR);

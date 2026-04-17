@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, watch, computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { postApi, type PostDetail } from '@/api/post'
 import { commentApi, type PostComment } from '@/api/comment'
 import { interactionApi } from '@/api/interaction'
+import { reportApi, type ReportBizType } from '@/api/report'
 
 const CommentList = defineAsyncComponent(() => import('@/components/CommentList.vue'))
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 
 const isMyPost = computed(() => {
@@ -30,6 +32,15 @@ const likeLoading = ref(false)
 const favoriteLoading = ref(false)
 const replyingTo = ref<PostComment | null>(null)
 const deleteLoading = ref(false)
+const reportVisible = ref(false)
+const reportSubmitting = ref(false)
+const reportTitle = ref('')
+const reportForm = reactive({
+  bizType: 'POST' as ReportBizType,
+  bizId: 0,
+  reason: '',
+  detail: '',
+})
 let postRequestSeq = 0
 let commentRequestSeq = 0
 
@@ -162,6 +173,70 @@ async function handleCommentRefresh() {
   }
 }
 
+function goMessageAuthor() {
+  if (!post.value || !post.value.authorId || isMyPost.value) {
+    return
+  }
+  router.push({
+    name: 'message-center',
+    query: { peer: String(post.value.authorId), peerName: post.value.authorName },
+  })
+}
+
+function gotoUserMessage(userId?: number | null) {
+  if (!userId) return
+  if (post.value?.currentUserId && userId === post.value.currentUserId) return
+  router.push({
+    name: 'message-center',
+    query: { peer: String(userId), peerName: post.value?.authorName },
+  })
+}
+
+function openReportDialog(bizType: ReportBizType, bizId: number, title: string) {
+  reportForm.bizType = bizType
+  reportForm.bizId = bizId
+  reportForm.reason = ''
+  reportForm.detail = ''
+  reportTitle.value = title
+  reportVisible.value = true
+}
+
+function handleReportPost() {
+  if (!post.value || isMyPost.value) {
+    ElMessage.warning('不能举报自己发布的帖子')
+    return
+  }
+  openReportDialog('POST', post.value.id, post.value.title)
+}
+
+function handleReportComment(comment: PostComment) {
+  if (auth.userId && comment.fromUserId === auth.userId) {
+    ElMessage.warning('不能举报自己的评论')
+    return
+  }
+  openReportDialog('POST_COMMENT', comment.id, comment.content.slice(0, 24) || `评论#${comment.id}`)
+}
+
+async function submitReport() {
+  if (!reportForm.reason.trim() || reportSubmitting.value) return
+  reportSubmitting.value = true
+  try {
+    await reportApi.create({
+      bizType: reportForm.bizType,
+      bizId: reportForm.bizId,
+      reason: reportForm.reason.trim(),
+      detail: reportForm.detail.trim() || null,
+    })
+    ElMessage.success('举报已提交')
+    reportVisible.value = false
+  } catch (error) {
+    ElMessage.error('举报提交失败，请稍后重试')
+    console.error(error)
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
 watch(
   () => Number(route.params.id),
   async (id) => {
@@ -196,7 +271,19 @@ watch(
         <div class="title">{{ post.title }}</div>
         <div class="meta">
           <span class="tag">{{ post.categoryName }}</span>
-          <span class="meta-text">{{ post.authorName }}</span>
+          <button
+            v-if="!post.currentUserId || post.currentUserId !== post.authorId"
+            type="button"
+            class="author-chip"
+            @click="gotoUserMessage(post.authorId)"
+          >
+            <span class="author-avatar">{{ post.authorName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+            <span class="meta-text author-link">{{ post.authorName }}</span>
+          </button>
+          <span v-else class="author-chip author-chip-static">
+            <span class="author-avatar">{{ post.authorName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+            <span class="meta-text">{{ post.authorName }}</span>
+          </span>
           <span class="meta-dot">·</span>
           <span class="meta-text">
             {{ new Date(post.createTime).toLocaleString() }}
@@ -226,6 +313,7 @@ watch(
           >
             ⭐ {{ post.favorited ? '已收藏' : '收藏' }}
           </el-button>
+          <el-button v-if="auth.isAuthed && !isMyPost" text type="danger" size="small" @click="handleReportPost">举报</el-button>
           <span class="meta-text">浏览 {{ post.viewCount }} · 评论 {{ post.commentCount }}</span>
           <el-button
             v-if="isMyPost"
@@ -236,6 +324,15 @@ watch(
             @click="handleDeletePost"
           >
             删除
+          </el-button>
+          <el-button
+            v-else-if="post.authorId"
+            text
+            type="primary"
+            size="small"
+            @click="goMessageAuthor"
+          >
+            私信作者
           </el-button>
         </div>
       </el-card>
@@ -274,10 +371,29 @@ watch(
           :post-id="post?.id || 0"
           @refresh="handleCommentRefresh"
           @reply="handleReply"
+          @report="handleReportComment"
         />
         <div v-else class="empty-text">评论区还空着，来留下第一条观点吧！</div>
       </template>
     </el-card>
+
+    <el-dialog v-model="reportVisible" title="举报内容" width="520px" destroy-on-close>
+      <el-form label-width="90px">
+        <el-form-item label="举报对象">
+          <div class="report-target">{{ reportTitle }}</div>
+        </el-form-item>
+        <el-form-item label="举报原因">
+          <el-input v-model="reportForm.reason" placeholder="例如：广告、辱骂、违规内容" />
+        </el-form-item>
+        <el-form-item label="补充说明">
+          <el-input v-model="reportForm.detail" type="textarea" :rows="4" placeholder="可补充说明具体问题" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reportVisible = false">取消</el-button>
+        <el-button type="primary" :loading="reportSubmitting" @click="submitReport">提交举报</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -358,6 +474,45 @@ watch(
   color: var(--ccp-text-muted);
 }
 
+.author-chip {
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.author-chip-static {
+  cursor: default;
+}
+
+.author-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--ccp-primary-gradient);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.author-link {
+  color: var(--ccp-primary);
+}
+
+.author-chip:hover .author-link {
+  text-decoration: underline;
+}
+
+.author-chip-static:hover .meta-text {
+  text-decoration: none;
+}
+
 .meta-dot {
   color: #9ca3af;
 }
@@ -409,5 +564,11 @@ watch(
 .reply-user {
   font-weight: 600;
   color: var(--ccp-primary);
+}
+
+.report-target {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.6;
 }
 </style>

@@ -1,15 +1,26 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import type { ResourceListItem } from '@/api/resource'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   resource: ResourceListItem
 }>()
 
 const router = useRouter()
+const auth = useAuthStore()
 
 function gotoDetail() {
   router.push({ name: 'resource-detail', params: { id: props.resource.id } })
+}
+
+function gotoUploaderMessage(e: MouseEvent) {
+  e.stopPropagation()
+  if (!props.resource.uploaderId || (auth.userId && auth.userId === props.resource.uploaderId)) return
+  router.push({
+    name: 'message-center',
+    query: { peer: String(props.resource.uploaderId), peerName: props.resource.uploaderName },
+  })
 }
 </script>
 
@@ -17,7 +28,19 @@ function gotoDetail() {
   <el-card class="resource-card ccp-card" shadow="never" @click="gotoDetail">
     <div class="resource-top">
       <span class="tag">{{ resource.categoryName }}</span>
-      <span class="meta-text">{{ resource.uploaderName }}</span>
+      <button
+        v-if="!auth.userId || auth.userId !== resource.uploaderId"
+        type="button"
+        class="uploader-link"
+        @click="gotoUploaderMessage"
+      >
+        <span class="uploader-avatar">{{ resource.uploaderName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+        <span class="meta-text">{{ resource.uploaderName }}</span>
+      </button>
+      <span v-else class="uploader-link uploader-text">
+        <span class="uploader-avatar">{{ resource.uploaderName?.slice(0, 1)?.toUpperCase() || 'U' }}</span>
+        <span class="meta-text">{{ resource.uploaderName }}</span>
+      </span>
     </div>
     <div class="title">{{ resource.title }}</div>
     <div v-if="resource.description" class="desc">
@@ -67,6 +90,45 @@ function gotoDetail() {
 
 .meta {
   color: var(--ccp-text-muted);
+}
+
+.uploader-link {
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.uploader-text {
+  cursor: default;
+}
+
+.uploader-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ccp-primary-gradient);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.uploader-link .meta-text {
+  color: var(--ccp-primary);
+}
+
+.uploader-link:hover .meta-text {
+  text-decoration: underline;
+}
+
+.uploader-text:hover .meta-text {
+  text-decoration: none;
 }
 
 .tag {

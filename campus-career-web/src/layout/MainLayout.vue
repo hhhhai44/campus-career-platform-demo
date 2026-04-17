@@ -3,27 +3,41 @@ import { computed, onMounted, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
+import { useMessageStore } from '@/stores/message'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const notification = useNotificationStore()
+const message = useMessageStore()
 
 const unreadCount = computed(() => notification.unreadCount)
 
-const navItems = [
+const navItems = computed(() => [
   { label: '首页', path: '/', name: 'home' },
   { label: '论坛', path: '/forum', name: 'forum-list' },
   { label: '资源库', path: '/resource', name: 'resource-list' },
   { label: '学涯助手', path: '/qa', name: 'smart-qa' },
+  { label: '私信', path: '/message', name: 'message-center' },
   { label: '上传', path: '/upload', name: 'upload' },
-]
+  ...(auth.isAdmin
+    ? [
+        { label: '帖子审核', path: '/admin/posts', name: 'admin-post-review' },
+        { label: '举报管理', path: '/admin/reports', name: 'admin-report-review' },
+        { label: '用户管理', path: '/admin/users', name: 'admin-user-review' },
+      ]
+    : []),
+])
 
 const activePath = computed(() => {
   if (route.path.startsWith('/forum')) return '/forum'
   if (route.path.startsWith('/resource')) return '/resource'
   if (route.path.startsWith('/qa') || route.path.startsWith('/qwen')) return '/qa'
+  if (route.path.startsWith('/message')) return '/message'
   if (route.path.startsWith('/upload')) return '/upload'
+  if (route.path.startsWith('/admin/posts')) return '/admin/posts'
+  if (route.path.startsWith('/admin/reports')) return '/admin/reports'
+  if (route.path.startsWith('/admin/users')) return '/admin/users'
   return '/'
 })
 
@@ -50,15 +64,18 @@ watch(
   (authed) => {
     if (!authed) {
       notification.resetUnread()
+      message.resetUnread()
       return
     }
     notification.fetchUnreadCount()
+    message.fetchUnreadCount()
   },
 )
 
 onMounted(() => {
   if (auth.isAuthed) {
     notification.fetchUnreadCount()
+    message.fetchUnreadCount()
   }
 })
 

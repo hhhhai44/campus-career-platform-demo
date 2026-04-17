@@ -22,9 +22,13 @@ const loadResourceDetailView: ViewLoader = () => import('@/views/resource/Resour
 const loadQwenChatView: ViewLoader = () => import('@/views/QwenChat.vue')
 const loadUploadView: ViewLoader = () => import('@/views/UploadCenter.vue')
 const loadNotificationView: ViewLoader = () => import('@/views/NotificationView.vue')
+const loadMessageCenterView: ViewLoader = () => import('@/views/message/MessageCenter.vue')
 const loadMeCenterView: ViewLoader = () => import('@/views/MeCenter.vue')
 const loadLoginView: ViewLoader = () => import('@/views/LoginView.vue')
 const loadRegisterView: ViewLoader = () => import('@/views/RegisterView.vue')
+const loadAdminPostModerationView: ViewLoader = () => import('@/views/admin/PostModerationView.vue')
+const loadAdminReportManagementView: ViewLoader = () => import('@/views/admin/ReportManagementView.vue')
+const loadAdminUserManagementView: ViewLoader = () => import('@/views/admin/UserManagementView.vue')
 
 const loadersByRouteName: Record<string, ViewLoader> = {
   home: loadHomeView,
@@ -35,7 +39,11 @@ const loadersByRouteName: Record<string, ViewLoader> = {
   'smart-qa': loadQwenChatView,
   upload: loadUploadView,
   notification: loadNotificationView,
+  'message-center': loadMessageCenterView,
   me: loadMeCenterView,
+  'admin-post-review': loadAdminPostModerationView,
+  'admin-report-review': loadAdminReportManagementView,
+  'admin-user-review': loadAdminUserManagementView,
   login: loadLoginView,
   register: loadRegisterView,
 }
@@ -44,7 +52,10 @@ const prefetchPlan: Record<string, string[]> = {
   home: ['forum-list', 'resource-list', 'smart-qa'],
   'forum-list': ['forum-detail', 'resource-list'],
   'resource-list': ['resource-detail', 'forum-list'],
+  'message-center': ['forum-list', 'me'],
   'smart-qa': ['resource-list', 'forum-list'],
+  'admin-report-review': ['admin-post-review', 'admin-user-review'],
+  'admin-user-review': ['admin-post-review', 'admin-report-review'],
 }
 
 const prefetchedRoutes = new Set<string>()
@@ -66,6 +77,7 @@ function prefetchRoutes(routeNames: string[]) {
     if (prefetchedRoutes.has(routeName)) continue
     const loader = loadersByRouteName[routeName]
     if (!loader) continue
+
     prefetchedRoutes.add(routeName)
     runWhenIdle(() => {
       void loader().catch(() => {
@@ -110,6 +122,11 @@ const routes: RouteRecordRaw[] = [
         meta: { keepAlive: true },
       },
       {
+        path: 'resource/:id',
+        name: 'resource-detail',
+        component: loadResourceDetailView,
+      },
+      {
         path: 'qa',
         name: 'smart-qa',
         component: loadQwenChatView,
@@ -119,11 +136,6 @@ const routes: RouteRecordRaw[] = [
         path: 'qwen',
         name: 'qwen-chat',
         redirect: { name: 'smart-qa' },
-      },
-      {
-        path: 'resource/:id',
-        name: 'resource-detail',
-        component: loadResourceDetailView,
       },
       {
         path: 'upload',
@@ -136,9 +148,32 @@ const routes: RouteRecordRaw[] = [
         component: loadNotificationView,
       },
       {
+        path: 'message',
+        name: 'message-center',
+        component: loadMessageCenterView,
+      },
+      {
         path: 'me',
         name: 'me',
         component: loadMeCenterView,
+      },
+      {
+        path: 'admin/posts',
+        name: 'admin-post-review',
+        component: loadAdminPostModerationView,
+        meta: { requiresAdmin: true },
+      },
+      {
+        path: 'admin/reports',
+        name: 'admin-report-review',
+        component: loadAdminReportManagementView,
+        meta: { requiresAdmin: true },
+      },
+      {
+        path: 'admin/users',
+        name: 'admin-user-review',
+        component: loadAdminUserManagementView,
+        meta: { requiresAdmin: true },
       },
     ],
   },
@@ -171,21 +206,24 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+
   if (to.meta?.requiresAuth && !auth.isAuthed) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if ((to.name === 'login' || to.name === 'register') && auth.isAuthed) {
+
+  if (to.meta?.requiresAdmin && !auth.isAdmin) {
     return { name: 'home' }
   }
+
   return true
 })
 
 router.afterEach((to) => {
-  const routeName = typeof to.name === 'string' ? to.name : ''
-  const nextLikelyRoutes = prefetchPlan[routeName]
-  if (nextLikelyRoutes) {
-    prefetchRoutes(nextLikelyRoutes)
-  }
+  const currentName = typeof to.name === 'string' ? to.name : null
+  if (!currentName) return
+  const plan = prefetchPlan[currentName]
+  if (!plan?.length) return
+  prefetchRoutes(plan)
 })
 
 export default router
