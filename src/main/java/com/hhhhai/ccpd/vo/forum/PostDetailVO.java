@@ -1,5 +1,6 @@
 package com.hhhhai.ccpd.vo.forum;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -7,6 +8,7 @@ import lombok.Data;
  * 帖子详情视图对象
  */
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class PostDetailVO {
 
   private Long id;

@@ -43,8 +43,8 @@ function gotoUploaderMessage(e: MouseEvent) {
       </span>
     </div>
     <div class="title">{{ resource.title }}</div>
-    <div v-if="resource.description" class="desc">
-      {{ resource.description }}
+    <div v-if="resource.contentPreview || resource.description" class="desc">
+      {{ resource.contentPreview || resource.description }}
     </div>
     <div class="bottom">
       <div class="stats">
@@ -52,7 +52,6 @@ function gotoUploaderMessage(e: MouseEvent) {
         <span>👍 {{ resource.likeCount }}</span>
         <span>⭐收藏 {{ resource.favoriteCount }}</span>
         <span>💬 {{ resource.commentCount }}</span>
-        <span>⬇️ {{ resource.downloadCount }}</span>
       </div>
     </div>
   </el-card>

@@ -27,9 +27,11 @@ public interface PostService {
    * @param size 每页大小
    * @param keyword 标题关键字（可选）
    * @param categoryId 分类ID（可选）
+   * @param timeRange 时间范围（可选）
    * @return 分页结果
    */
-  Page<PostListItemVO> pagePostList(Long page, Long size, String keyword, Long categoryId);
+  Page<PostListItemVO> pagePostList(Long page, Long size, String keyword, Long categoryId,
+      String timeRange);
 
   /**
    * 帖子详情
@@ -92,10 +94,3 @@ public interface PostService {
    */
   void restorePost(Long postId);
 }
-
-
-
-
-
-
-

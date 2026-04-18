@@ -22,6 +22,7 @@ import com.hhhhai.ccpd.service.PrivateMessageService;
 import com.hhhhai.ccpd.vo.message.ConversationVO;
 import com.hhhhai.ccpd.vo.message.PrivateMessageVO;
 import jakarta.annotation.Resource;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -95,7 +96,7 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
       PrivateMessageEntity last = lastMessageMap.get(digest.getLastMessageId());
       if (last != null) {
         vo.setLastSenderId(last.getFromUserId());
-        vo.setLastMessage(last.getContent());
+        vo.setLastMessage(buildDisplayContent(last, userId));
       }
       PrivateMessageSessionSettingEntity setting = settingMap.get(digest.getPeerUserId());
       vo.setPinned(setting != null && Objects.equals(setting.getIsPinned(), 1));
@@ -135,19 +136,21 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
 
     List<PrivateMessageVO> records = entities.stream().map(entity -> {
       PrivateMessageVO vo = new PrivateMessageVO();
+      boolean mine = Objects.equals(entity.getFromUserId(), userId);
+      boolean recalled = Objects.equals(entity.getIsRecalled(), 1);
       vo.setId(entity.getId());
       vo.setFromUserId(entity.getFromUserId());
       vo.setFromUsername(userNameMap.getOrDefault(entity.getFromUserId(), FALLBACK_USERNAME));
       vo.setToUserId(entity.getToUserId());
       vo.setToUsername(userNameMap.getOrDefault(entity.getToUserId(), FALLBACK_USERNAME));
-      vo.setContent(entity.getContent());
+      vo.setContent(buildDisplayContent(entity, userId));
       Integer isRead = entity.getIsRead() == null ? ReadStatusEnum.UNREAD.getCode()
           : entity.getIsRead().getCode();
       vo.setIsRead(isRead);
-      vo.setIsReadDesc(ReadStatusEnum.getDescByCode(isRead));
       vo.setCreateTime(entity.getCreateTime());
-      vo.setMine(Objects.equals(entity.getFromUserId(), userId));
-      vo.setRecalled(Objects.equals(entity.getIsRecalled(), 1));
+      vo.setMine(mine);
+      vo.setRecalled(recalled);
+      vo.setRecallable(isRecallable(entity, userId));
       return vo;
     }).collect(Collectors.toList());
 
@@ -261,9 +264,17 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
     if (Objects.equals(entity.getIsRecalled(), 1)) {
       return;
     }
-    entity.setIsRecalled(1);
-    entity.setContent("你撤回了一条消息");
-    privateMessageMapper.updateById(entity);
+    if (entity.getCreateTime() == null
+        || LocalDateTime.now().isAfter(entity.getCreateTime().plusMinutes(2))) {
+      throw new BusinessException(ErrorCode.MESSAGE_RECALL_TIMEOUT);
+    }
+    PrivateMessageEntity update = new PrivateMessageEntity();
+    update.setIsRecalled(1);
+    LambdaUpdateWrapper<PrivateMessageEntity> wrapper = new LambdaUpdateWrapper<>();
+    wrapper.eq(PrivateMessageEntity::getId, messageId)
+        .eq(PrivateMessageEntity::getFromUserId, userId)
+        .eq(PrivateMessageEntity::getIsRecalled, 0);
+    privateMessageMapper.update(update, wrapper);
   }
 
   @Override
@@ -316,8 +327,8 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
     }
     List<UserEntity> users = userMapper.selectBatchIds(userIds);
     return users.stream().collect(Collectors.toMap(UserEntity::getId,
-        u -> StringUtils.hasText(u.getRealName()) ? u.getRealName()
-            : (StringUtils.hasText(u.getUsername()) ? u.getUsername() : FALLBACK_USERNAME)));
+        u -> StringUtils.hasText(u.getUsername()) ? u.getUsername()
+            : (StringUtils.hasText(u.getRealName()) ? u.getRealName() : FALLBACK_USERNAME)));
   }
 
   private Map<Long, PrivateMessageSessionSettingEntity> loadSessionSettingMap(Long userId,
@@ -373,6 +384,25 @@ public class PrivateMessageServiceImpl implements PrivateMessageService {
     if (val != null && val < 0) {
       stringRedisTemplate.opsForValue().set(key, "0");
     }
+  }
+
+  private String buildDisplayContent(PrivateMessageEntity message, Long currentUserId) {
+    if (!Objects.equals(message.getIsRecalled(), 1)) {
+      return message.getContent();
+    }
+    return Objects.equals(message.getFromUserId(), currentUserId)
+        ? "你撤回了一条消息"
+        : "对方撤回了一条消息";
+  }
+
+  private boolean isRecallable(PrivateMessageEntity message, Long currentUserId) {
+    if (!Objects.equals(message.getFromUserId(), currentUserId)) {
+      return false;
+    }
+    if (Objects.equals(message.getIsRecalled(), 1) || message.getCreateTime() == null) {
+      return false;
+    }
+    return !LocalDateTime.now().isAfter(message.getCreateTime().plusMinutes(2));
   }
 }
 

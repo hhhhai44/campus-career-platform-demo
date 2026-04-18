@@ -42,4 +42,33 @@ public class QwenProperties {
       - 使用 Markdown 提升可读性（短标题、列表、分点），避免长段落。
       - 语气友好专业，结尾可给一句简短引导。
       """;
+
+  /**
+   * RAG 编排配置。
+   */
+  private RagProperties rag = new RagProperties();
+
+  @Data
+  public static class RagProperties {
+
+    /**
+     * 是否启用 RAG 扩展链路（分类、检索、问题融合）。
+     */
+    private boolean enabled = false;
+
+    /**
+     * 向量检索返回条数。
+     */
+    private int topK = 5;
+
+    /**
+     * 问题分类阶段模型（为空时回退请求模型）。
+     */
+    private String classifierModel;
+
+    /**
+     * 问题融合阶段模型（为空时回退请求模型）。
+     */
+    private String fusionModel;
+  }
 }

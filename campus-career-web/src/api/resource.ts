@@ -18,7 +18,7 @@ export type ResourceListItem = {
   likeCount: number
   favoriteCount: number
   commentCount: number
-  downloadCount: number
+  contentPreview?: string | null
   createTime: string
 }
 
@@ -30,7 +30,7 @@ export type ResourceDetail = {
   categoryName: string
   uploaderId: number
   uploaderName: string
-  fileUrl: string
+  content: string
   tags: string | null
   scoreAvg: number
   scoreCount: number
@@ -40,15 +40,14 @@ export type ResourceDetail = {
   favorited: boolean
   owner: boolean
   hasRated: boolean
-  downloadCount: number
   createTime: string
 }
 
 export type UploadResourceReq = {
   title: string
   description?: string
+  content: string
   categoryId: number
-  fileUrl: string
   tags?: string
 }
 
@@ -59,8 +58,13 @@ export const resourceApi = {
   },
 
   // GET /resource/page
-  page(params: { page?: number; size?: number; keyword?: string | null; categoryId?: number | null }) {
+  page(params: { page?: number; size?: number; keyword?: string | null; categoryId?: number | null; timeRange?: string | null }) {
     return getJson<PageResult<ResourceListItem>>('/resource/page', { params })
+  },
+
+  // GET /resource/my
+  myPage(page = 1, size = 10) {
+    return getJson<PageResult<ResourceListItem>>('/resource/my', { params: { page, size } })
   },
 
   // GET /resource/{id}
@@ -68,10 +72,6 @@ export const resourceApi = {
     return getJson<ResourceDetail>(`/resource/${id}`)
   },
 
-  // POST /resource/{id}/download
-  download(id: number) {
-    return postJson<string, unknown>(`/resource/${id}/download`)
-  },
 
   // POST /resource/{id}/like/toggle
   likeToggle(id: number) {

@@ -40,6 +40,11 @@ export const commentApi = {
     })
   },
 
+  // GET /forum/post/comment/my
+  myPage(page = 1, size = 10) {
+    return getJson<PageResult<PostComment>>('/forum/post/comment/my', { params: { page, size } })
+  },
+
   // DELETE /forum/post/comment/{id}
   delete(id: number) {
     return deleteJson(`/forum/post/comment/${id}`)

@@ -46,9 +46,10 @@ public class PostController {
       @RequestParam(defaultValue = "1") Long page,
       @RequestParam(defaultValue = "10") Long size,
       @RequestParam(required = false) String keyword,
-      @RequestParam(required = false) Long categoryId) {
+      @RequestParam(required = false) Long categoryId,
+      @RequestParam(required = false) String timeRange) {
     Page<PostListItemVO> result =
-        postService.pagePostList(page, size, keyword, categoryId);
+        postService.pagePostList(page, size, keyword, categoryId, timeRange);
     return Result.success(result);
   }
 
@@ -81,10 +82,3 @@ public class PostController {
     return Result.success(result);
   }
 }
-
-
-
-
-
-
-

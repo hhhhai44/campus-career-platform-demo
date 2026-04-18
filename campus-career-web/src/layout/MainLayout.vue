@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useNotificationStore } from '@/stores/notification'
 import { useMessageStore } from '@/stores/message'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const notification = useNotificationStore()
 const message = useMessageStore()
-
-const unreadCount = computed(() => notification.unreadCount)
 
 const navItems = computed(() => [
   { label: '首页', path: '/', name: 'home' },
@@ -59,26 +55,6 @@ function gotoMe() {
   router.push({ name: 'me' })
 }
 
-watch(
-  () => auth.isAuthed,
-  (authed) => {
-    if (!authed) {
-      notification.resetUnread()
-      message.resetUnread()
-      return
-    }
-    notification.fetchUnreadCount()
-    message.fetchUnreadCount()
-  },
-)
-
-onMounted(() => {
-  if (auth.isAuthed) {
-    notification.fetchUnreadCount()
-    message.fetchUnreadCount()
-  }
-})
-
 const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCase())
 </script>
 
@@ -90,7 +66,6 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
           <div class="logo">CC</div>
           <div class="brand-text">
             <div class="title">校园职涯社区</div>
-            <div class="sub">Campus Career Platform</div>
           </div>
         </div>
 
@@ -108,16 +83,6 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
         </nav>
 
         <div class="right-area">
-          <button class="icon-btn" type="button" @click="gotoNotifications">
-            <el-badge
-              :value="unreadCount"
-              :hidden="!unreadCount"
-              :max="99"
-              class="badge"
-            >
-              <span class="bell">🔔</span>
-            </el-badge>
-          </button>
 
           <el-dropdown v-if="auth.isAuthed" trigger="click" placement="bottom-end">
             <button type="button" class="user-btn">
@@ -126,6 +91,7 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
             </button>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item @click="gotoNotifications">通知中心</el-dropdown-item>
                 <el-dropdown-item @click="gotoMe">个人中心</el-dropdown-item>
                 <el-dropdown-item divided @click="onLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -210,10 +176,6 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   font-weight: 700;
 }
 
-.brand-text .sub {
-  font-size: 11px;
-  color: var(--ccp-text-muted);
-}
 
 .nav {
   display: flex;
@@ -339,10 +301,6 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
   .topbar-inner {
     gap: 8px;
     padding: 0 10px;
-  }
-
-  .brand-text .sub {
-    display: none;
   }
 
   .nav {

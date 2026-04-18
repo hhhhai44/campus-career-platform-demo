@@ -66,21 +66,21 @@ function goRegister() {
 
         <div class="feature-grid">
           <div class="feature-card feature-blue">
-            <span class="feature-icon">📝</span>
+            <span class="feature-icon"></span>
             <div>
               <div class="feature-title">聊聊实习和面试经验</div>
               <div class="feature-sub">把踩坑和收获都说出来</div>
             </div>
           </div>
           <div class="feature-card feature-orange">
-            <span class="feature-icon">📚</span>
+            <span class="feature-icon"></span>
             <div>
               <div class="feature-title">找学习资料和模板</div>
               <div class="feature-sub">少走弯路，直接上手</div>
             </div>
           </div>
           <div class="feature-card feature-green">
-            <span class="feature-icon">💬</span>
+            <span class="feature-icon"></span>
             <div>
               <div class="feature-title">参与讨论，收获反馈</div>
               <div class="feature-sub">发问、交流、得到回应</div>
@@ -111,7 +111,7 @@ function goRegister() {
                 clearable
               >
                 <template #prefix>
-                  <span class="input-icon">👤</span>
+                  <span class="input-icon"></span>
                 </template>
               </el-input>
             </el-form-item>
@@ -125,7 +125,7 @@ function goRegister() {
                 show-password
               >
                 <template #prefix>
-                  <span class="input-icon">🔒</span>
+                  <span class="input-icon"></span>
                 </template>
               </el-input>
             </el-form-item>

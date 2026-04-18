@@ -12,15 +12,9 @@ public class ReportListVO {
 
   private String bizTypeDesc;
 
-  private Long bizId;
-
   private String bizTitle;
 
-  private Long bizOwnerId;
-
   private String bizOwnerName;
-
-  private Long reporterId;
 
   private String reporterName;
 
@@ -30,12 +24,6 @@ public class ReportListVO {
 
   private String statusDesc;
 
-  private Long handlerId;
-
-  private String handlerName;
-
   private LocalDateTime createTime;
-
-  private LocalDateTime updateTime;
 }
 

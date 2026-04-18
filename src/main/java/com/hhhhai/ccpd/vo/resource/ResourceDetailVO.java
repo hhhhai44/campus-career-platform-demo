@@ -24,7 +24,8 @@ public class ResourceDetailVO {
 
   private String uploaderName;
 
-  private String fileUrl;
+  /** 文章正文 */
+  private String content;
 
   private String tags;
 
@@ -47,8 +48,6 @@ public class ResourceDetailVO {
 
   /** 当前用户是否已对该资源评分 */
   private Boolean hasRated;
-
-  private Integer downloadCount;
 
   private LocalDateTime createTime;
 }

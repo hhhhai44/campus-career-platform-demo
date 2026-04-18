@@ -51,6 +51,16 @@ public class PostCommentController {
   }
 
   /**
+   * 当前用户发过的评论分页
+   */
+  @GetMapping("/my")
+  public Result<Page<PostCommentVO>> myComments(
+      @RequestParam(defaultValue = "1") Long page,
+      @RequestParam(defaultValue = "10") Long size) {
+    return Result.success(postCommentService.pageMyComments(page, size));
+  }
+
+  /**
    * 删除评论
    */
   @DeleteMapping("/{id}")

@@ -5,6 +5,7 @@ export type PageRequest = {
   size?: number
   keyword?: string | null
   categoryId?: number | null
+  timeRange?: string | null
 }
 
 export type PageResult<T> = {
@@ -91,6 +92,11 @@ export const postApi = {
   // DELETE /forum/post/{id}
   delete(id: number) {
     return deleteJson<void>(`/forum/post/${id}`)
+  },
+
+  // GET /forum/post/my
+  myPage(page = 1, size = 10) {
+    return getJson<PageResult<PostListItem>>('/forum/post/my', { params: { page, size } })
   },
 
   // GET /admin/forum/post/page

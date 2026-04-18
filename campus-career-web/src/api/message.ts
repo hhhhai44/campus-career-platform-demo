@@ -26,10 +26,10 @@ export type PrivateMessage = {
   toUsername: string
   content: string
   isRead: number
-  isReadDesc?: string | null
   createTime: string
   mine: boolean
   recalled?: boolean
+  recallable?: boolean
 }
 
 export const messageApi = {

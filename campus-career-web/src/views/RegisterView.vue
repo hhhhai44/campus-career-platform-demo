@@ -79,11 +79,11 @@ function goLogin() {
             <span class="feature-icon">✨</span>
             <div>
               <div class="feature-title">免费使用全部核心功能</div>
-              <div class="feature-sub">发帖、评论、收藏、下载都能用</div>
+              <div class="feature-sub">发帖、评论、收藏、资源阅读都能用</div>
             </div>
           </div>
           <div class="feature-card feature-green">
-            <span class="feature-icon">🔐</span>
+            <span class="feature-icon"></span>
             <div>
               <div class="feature-title">账号安全，内容可控</div>
               <div class="feature-sub">内容管理更安心，体验更顺滑</div>
@@ -114,7 +114,7 @@ function goLogin() {
                 clearable
               >
                 <template #prefix>
-                  <span class="input-icon">👤</span>
+                  <span class="input-icon"></span>
                 </template>
               </el-input>
             </el-form-item>
@@ -128,7 +128,7 @@ function goLogin() {
                 show-password
               >
                 <template #prefix>
-                  <span class="input-icon">🔒</span>
+                  <span class="input-icon"></span>
                 </template>
               </el-input>
             </el-form-item>
@@ -142,7 +142,7 @@ function goLogin() {
                 show-password
               >
                 <template #prefix>
-                  <span class="input-icon">🔒</span>
+                  <span class="input-icon"></span>
                 </template>
               </el-input>
             </el-form-item>

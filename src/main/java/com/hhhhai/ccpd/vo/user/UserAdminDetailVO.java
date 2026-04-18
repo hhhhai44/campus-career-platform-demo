@@ -10,10 +10,6 @@ public class UserAdminDetailVO {
 
   private String username;
 
-  private String realName;
-
-  private String studentNo;
-
   private String email;
 
   private String phone;
@@ -29,9 +25,5 @@ public class UserAdminDetailVO {
   private Integer loginFailCount;
 
   private LocalDateTime lastLoginTime;
-
-  private LocalDateTime createTime;
-
-  private LocalDateTime updateTime;
 }
 

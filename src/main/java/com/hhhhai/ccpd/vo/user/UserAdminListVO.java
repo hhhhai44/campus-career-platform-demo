@@ -10,14 +10,6 @@ public class UserAdminListVO {
 
   private String username;
 
-  private String realName;
-
-  private String studentNo;
-
-  private String email;
-
-  private String phone;
-
   private Integer role;
 
   private String roleDesc;
@@ -29,7 +21,5 @@ public class UserAdminListVO {
   private Integer loginFailCount;
 
   private LocalDateTime lastLoginTime;
-
-  private LocalDateTime createTime;
 }
 

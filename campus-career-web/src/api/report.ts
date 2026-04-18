@@ -14,19 +14,13 @@ export type ReportListItem = {
   id: number
   bizType: ReportBizType
   bizTypeDesc?: string
-  bizId: number
   bizTitle: string
-  bizOwnerId: number
   bizOwnerName?: string
-  reporterId: number
   reporterName?: string
   reason: string
   status: number
   statusDesc?: string
-  handlerId?: number | null
-  handlerName?: string | null
   createTime: string
-  updateTime: string
 }
 
 export type ReportDetail = ReportListItem & {

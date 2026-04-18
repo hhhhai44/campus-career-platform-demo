@@ -47,10 +47,21 @@ public class ResourceController {
       @RequestParam(defaultValue = "1") Long page,
       @RequestParam(defaultValue = "10") Long size,
       @RequestParam(required = false) String keyword,
-      @RequestParam(required = false) Long categoryId) {
+      @RequestParam(required = false) Long categoryId,
+      @RequestParam(required = false) String timeRange) {
     Page<ResourceListItemVO> result =
-        resourceService.pageList(page, size, keyword, categoryId);
+        resourceService.pageList(page, size, keyword, categoryId, timeRange);
     return Result.success(result);
+  }
+
+  /**
+   * 当前用户上传的资源分页
+   */
+  @GetMapping("/my")
+  public Result<Page<ResourceListItemVO>> myResources(
+      @RequestParam(defaultValue = "1") Long page,
+      @RequestParam(defaultValue = "10") Long size) {
+    return Result.success(resourceService.pageMyResources(page, size));
   }
 
   /**
@@ -78,14 +89,5 @@ public class ResourceController {
   public Result<FavoriteToggleVO> favoriteToggle(@PathVariable("id") Long id) {
     FavoriteToggleVO vo = resourceService.toggleFavorite(id);
     return Result.success(vo);
-  }
-
-  /**
-   * 获取下载地址并累加下载次数
-   */
-  @PostMapping("/{id}/download")
-  public Result<String> download(@PathVariable("id") Long id) {
-    String url = resourceService.getDownloadUrlAndIncreaseCount(id);
-    return Result.success(url);
   }
 }

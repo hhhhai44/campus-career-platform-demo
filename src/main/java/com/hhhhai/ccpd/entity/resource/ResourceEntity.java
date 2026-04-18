@@ -46,9 +46,9 @@ public class ResourceEntity implements Serializable {
   private Long uploaderId;
 
   /**
-   * 文件访问URL或存储路径
+   * 资源正文内容
    */
-  private String fileUrl;
+  private String content;
 
   /**
    * 标签，逗号分隔
@@ -74,11 +74,6 @@ public class ResourceEntity implements Serializable {
    * 收藏数量
    */
   private Integer favoriteCount;
-
-  /**
-   * 下载次数
-   */
-  private Integer downloadCount;
 
   /**
    * 状态：正常/下架

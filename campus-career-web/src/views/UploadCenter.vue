@@ -24,8 +24,8 @@ const posting = ref(false)
 const resourceForm = ref<UploadResourceReq>({
   title: '',
   description: '',
+  content: '',
   categoryId: 0,
-  fileUrl: '',
   tags: '',
 })
 const uploading = ref(false)
@@ -82,12 +82,12 @@ async function submitResource() {
     ElMessage.warning('先写资源标题，方便同学检索')
     return
   }
-  if (!resourceForm.value.categoryId) {
-    ElMessage.warning('请选择资源分类')
+  if (!resourceForm.value.content.trim()) {
+    ElMessage.warning('请补充文章正文')
     return
   }
-  if (!resourceForm.value.fileUrl.trim()) {
-    ElMessage.warning('请填写可访问的资源地址')
+  if (!resourceForm.value.categoryId) {
+    ElMessage.warning('请选择资源分类')
     return
   }
   uploading.value = true
@@ -95,8 +95,8 @@ async function submitResource() {
     const id = await resourceApi.upload({
       title: resourceForm.value.title.trim(),
       description: resourceForm.value.description?.trim() || '',
+      content: resourceForm.value.content.trim(),
       categoryId: resourceForm.value.categoryId,
-      fileUrl: resourceForm.value.fileUrl.trim(),
       tags: resourceForm.value.tags?.trim() || '',
     })
     ElMessage.success('上传完成！感谢你的分享')
@@ -167,7 +167,7 @@ onMounted(() => {
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="上传资源" name="resource">
+        <el-tab-pane label="发布文章" name="resource">
           <el-form label-width="80">
             <el-form-item label="标题">
               <el-input
@@ -195,18 +195,20 @@ onMounted(() => {
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="地址">
-              <el-input
-                v-model="resourceForm.fileUrl"
-                placeholder="填入网盘链接、直链或存储路径"
-              />
-            </el-form-item>
-            <el-form-item label="简介">
+            <el-form-item label="摘要">
               <el-input
                 v-model="resourceForm.description"
                 type="textarea"
-                :rows="4"
-                placeholder="简单说明资源内容和适用场景"
+                :rows="3"
+                placeholder="简要概括文章内容，便于列表页展示"
+              />
+            </el-form-item>
+            <el-form-item label="正文">
+              <el-input
+                v-model="resourceForm.content"
+                type="textarea"
+                :rows="10"
+                placeholder="撰写文章正文，支持按段落组织内容"
               />
             </el-form-item>
             <el-form-item label="标签">

@@ -10,6 +10,7 @@ import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.PostCategoryEnum;
+import com.hhhhai.ccpd.common.enums.TimeRangeEnum;
 import com.hhhhai.ccpd.common.enums.UserRoleEnum;
 import com.hhhhai.ccpd.dto.forum.PostCreateDTO;
 import com.hhhhai.ccpd.entity.forum.PostCategoryEntity;
@@ -27,6 +28,7 @@ import com.hhhhai.ccpd.service.PostService;
 import com.hhhhai.ccpd.vo.forum.PostDetailVO;
 import com.hhhhai.ccpd.vo.forum.PostListItemVO;
 import jakarta.annotation.Resource;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,29 +85,36 @@ public class PostServiceImpl implements PostService {
   }
 
   @Override
-  public Page<PostListItemVO> pagePostList(Long page, Long size, String keyword, Long categoryId) {
-    return queryPostPage(page, size, keyword, categoryId, ContentStatusEnum.NORMAL,
-        LogicDeleteEnum.NOT_DELETED, null);
+  public Page<PostListItemVO> pagePostList(Long page, Long size, String keyword, Long categoryId,
+      String timeRange) {
+    return queryPostPage(page, size, keyword, categoryId, timeRange, ContentStatusEnum.NORMAL,
+        LogicDeleteEnum.NOT_DELETED, null, false);
   }
 
   @Override
   public Page<PostListItemVO> pageMyPosts(Long page, Long size) {
     UserContext user = requireLogin();
-    return queryPostPage(page, size, null, null, null, LogicDeleteEnum.NOT_DELETED, user.getUserId());
+    return queryPostPage(page, size, null, null, null, null, LogicDeleteEnum.NOT_DELETED,
+        user.getUserId(), false);
   }
 
   @Override
   public Page<PostListItemVO> pageAdminPosts(Long page, Long size, String keyword, Long categoryId,
       Integer status, Integer deleted) {
     Integer statusParam = deleted != null && deleted == 1 ? null : status;
-    Page<PostEntity> entityPage = new Page<>(page, size);
-    List<PostEntity> records = postMapper.selectAdminPage(entityPage, keyword, categoryId, statusParam, deleted);
+    long safePage = page == null || page < 1 ? 1 : page;
+    long safeSize = size == null || size < 1 ? 10 : Math.min(size, 100);
+    long offset = (safePage - 1) * safeSize;
+
+    Page<PostEntity> entityPage = new Page<>(safePage, safeSize);
+    Long total = postMapper.countAdminPage(keyword, categoryId, statusParam, deleted);
+    entityPage.setTotal(total == null ? 0 : total);
+
+    List<PostEntity> records = total == null || total <= 0
+        ? Collections.emptyList()
+        : postMapper.selectAdminPage(keyword, categoryId, statusParam, deleted, offset, safeSize);
     entityPage.setRecords(records);
-    if ((entityPage.getTotal() <= 0) && records != null && !records.isEmpty()) {
-      Long total = postMapper.countAdminPage(keyword, categoryId, statusParam, deleted);
-      entityPage.setTotal(total == null ? 0 : total);
-    }
-    return convertToPostListPage(entityPage, page, size);
+    return convertToPostListPage(entityPage, safePage, safeSize, true);
   }
 
   @Override
@@ -149,8 +158,10 @@ public class PostServiceImpl implements PostService {
     // 默认 false，避免序列化缺失时前端首屏状态错误
     vo.setLiked(false);
     vo.setFavorited(false);
-    vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
-    vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+    if (allowHidden) {
+      vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
+      vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+    }
     vo.setAuthorName(loadAuthorName(entity.getAuthorId()));
 
     UserContext user = UserContextHolder.getUser();
@@ -205,8 +216,11 @@ public class PostServiceImpl implements PostService {
   }
 
   private Page<PostListItemVO> queryPostPage(Long page, Long size, String keyword, Long categoryId,
-      ContentStatusEnum status, LogicDeleteEnum deleted, Long authorId) {
+      String timeRange,
+      ContentStatusEnum status, LogicDeleteEnum deleted, Long authorId,
+      boolean includeModerationFields) {
     Page<PostEntity> pageParam = new Page<>(page, size);
+    LocalDateTime startTime = TimeRangeEnum.fromCode(timeRange).resolveStartTime();
 
     LambdaQueryWrapper<PostEntity> wrapper = new LambdaQueryWrapper<>();
     if (status != null) {
@@ -224,14 +238,18 @@ public class PostServiceImpl implements PostService {
     if (authorId != null) {
       wrapper.eq(PostEntity::getAuthorId, authorId);
     }
+    if (startTime != null) {
+      wrapper.ge(PostEntity::getCreateTime, startTime);
+    }
     wrapper.orderByDesc(PostEntity::getIsTop)
         .orderByDesc(PostEntity::getCreateTime);
 
     Page<PostEntity> entityPage = postMapper.selectPage(pageParam, wrapper);
-    return convertToPostListPage(entityPage, page, size);
+    return convertToPostListPage(entityPage, page, size, includeModerationFields);
   }
 
-  private Page<PostListItemVO> convertToPostListPage(Page<PostEntity> entityPage, Long page, Long size) {
+  private Page<PostListItemVO> convertToPostListPage(Page<PostEntity> entityPage, Long page, Long size,
+      boolean includeModerationFields) {
     List<PostEntity> records = entityPage.getRecords();
     if (records.isEmpty()) {
       Page<PostListItemVO> empty = new Page<>(page, size, entityPage.getTotal());
@@ -254,8 +272,10 @@ public class PostServiceImpl implements PostService {
       vo.setSummary(buildSummary(entity.getContent(), 96));
       vo.setFavoriteCount(getPostFavoriteCount(entity.getId()));
       vo.setLikeCount(getPostLikeCount(entity.getId(), entity.getLikeCount()));
-      vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
-      vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+      if (includeModerationFields) {
+        vo.setStatus(entity.getStatus() == null ? null : entity.getStatus().getCode());
+        vo.setDeleted(entity.getDeleted() == null ? null : entity.getDeleted().getCode());
+      }
       return vo;
     }).collect(Collectors.toList());
 

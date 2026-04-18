@@ -13,7 +13,16 @@ public class ResourceUploadDTO {
   @NotBlank(message = "资源标题不能为空")
   private String title;
 
+  /**
+   * 文章摘要，可选
+   */
   private String description;
+
+  /**
+   * 文章正文
+   */
+  @NotBlank(message = "资源正文不能为空")
+  private String content;
 
   /**
    * 分类ID
@@ -22,21 +31,7 @@ public class ResourceUploadDTO {
   private Long categoryId;
 
   /**
-   * 文件访问URL或存储路径
-   */
-  @NotBlank(message = "资源地址不能为空")
-  private String fileUrl;
-
-  /**
    * 标签，可选，逗号分隔
    */
   private String tags;
 }
-
-
-
-
-
-
-
-

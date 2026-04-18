@@ -37,6 +37,12 @@ export const resourceCommentApi = {
     })
   },
 
+  myPage(page = 1, size = 10) {
+    return getJson<PageResult<ResourceComment>>('/resource/comment/my', {
+      params: { page, size },
+    })
+  },
+
   delete(id: number) {
     return deleteJson(`/resource/comment/${id}`)
   },

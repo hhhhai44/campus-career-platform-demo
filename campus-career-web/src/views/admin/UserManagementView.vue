@@ -9,6 +9,7 @@ const records = ref<UserAdminListItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const fetchSeq = ref(0)
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const currentDetail = ref<UserAdminDetail | null>(null)
@@ -46,18 +47,24 @@ function buildParams() {
 }
 
 async function fetchUsers() {
+  const seq = ++fetchSeq.value
   loading.value = true
   try {
     const result = await userAdminApi.adminPage(buildParams())
+    if (seq !== fetchSeq.value) return
     records.value = result.records ?? []
-    total.value = result.total ?? 0
+    const nextTotal = Number(result.total ?? 0)
+    total.value = Number.isFinite(nextTotal) ? nextTotal : 0
   } catch (error) {
+    if (seq !== fetchSeq.value) return
     records.value = []
     total.value = 0
     ElMessage.error('用户列表加载失败')
     console.error(error)
   } finally {
-    loading.value = false
+    if (seq === fetchSeq.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -149,7 +156,7 @@ onMounted(() => {
 
     <el-card class="filter-card" shadow="never">
       <div class="filters">
-        <el-input v-model="filters.keyword" clearable placeholder="按用户名/姓名/学号搜索" class="filter-input" />
+        <el-input v-model="filters.keyword" clearable placeholder="按用户名搜索" class="filter-input" />
         <el-select v-model="filters.role" clearable placeholder="用户角色" class="filter-select">
           <el-option label="学生" value="1" />
           <el-option label="管理员" value="2" />
@@ -174,8 +181,6 @@ onMounted(() => {
             <el-button link type="primary" class="title-btn" @click="openDetail(row)">{{ row.username }}</el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="realName" label="姓名" min-width="120" />
-        <el-table-column prop="studentNo" label="学号" min-width="140" />
         <el-table-column prop="roleDesc" label="角色" min-width="100" />
         <el-table-column label="状态" min-width="110">
           <template #default="{ row }"><el-tag :type="statusTagType(row)">{{ row.statusDesc || '-' }}</el-tag></template>
@@ -197,8 +202,8 @@ onMounted(() => {
 
       <div class="pagination">
         <el-pagination
-          :current-page="page"
-          :page-size="pageSize"
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="total"
@@ -214,8 +219,6 @@ onMounted(() => {
         <div v-if="currentDetail" class="detail-panel">
           <div class="detail-title">{{ currentDetail.username }}</div>
           <div class="detail-meta">
-            <span>姓名：{{ currentDetail.realName || '-' }}</span>
-            <span>学号：{{ currentDetail.studentNo || '-' }}</span>
             <span>角色：{{ currentDetail.roleDesc }}</span>
             <span>状态：{{ currentDetail.statusDesc }}</span>
           </div>

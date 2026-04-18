@@ -32,9 +32,7 @@ public class UserAdminServiceImpl implements UserAdminService {
     Page<UserEntity> pageParam = new Page<>(page, size);
     LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
     if (StringUtils.hasText(keyword)) {
-      wrapper.and(w -> w.like(UserEntity::getUsername, keyword)
-          .or().like(UserEntity::getRealName, keyword)
-          .or().like(UserEntity::getStudentNo, keyword));
+      wrapper.like(UserEntity::getUsername, keyword);
     }
     if (role != null) {
       UserRoleEnum roleEnum = UserRoleEnum.fromCode(role);

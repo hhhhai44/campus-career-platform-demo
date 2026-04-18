@@ -29,9 +29,16 @@ public interface ResourceService {
    * @param size 每页大小
    * @param keyword 标题或描述关键字（可选）
    * @param categoryId 分类ID（可选）
+   * @param timeRange 时间范围（可选）
    * @return 分页结果
    */
-  Page<ResourceListItemVO> pageList(Long page, Long size, String keyword, Long categoryId);
+  Page<ResourceListItemVO> pageList(Long page, Long size, String keyword, Long categoryId,
+      String timeRange);
+
+  /**
+   * 当前用户上传的资源分页
+   */
+  Page<ResourceListItemVO> pageMyResources(Long page, Long size);
 
   /**
    * 资源详情
@@ -47,9 +54,4 @@ public interface ResourceService {
    * 收藏/取消收藏
    */
   FavoriteToggleVO toggleFavorite(Long resourceId);
-
-  /**
-   * 资源下载计数 + 返回下载地址
-   */
-  String getDownloadUrlAndIncreaseCount(Long resourceId);
 }

@@ -13,9 +13,10 @@ import java.util.List;
  */
 public interface KnowledgeRetriever {
 
-  KnowledgeRetriever NO_OP = request -> RetrievedContext.builder().build();
+  KnowledgeRetriever NO_OP = (request, question, summary) -> RetrievedContext.builder().build();
 
-  RetrievedContext retrieve(AgentChatRequest request);
+  RetrievedContext retrieve(AgentChatRequest request, String normalizedQuestion,
+      QuestionTypeSummarizer.QuestionTypeSummary summary);
 
   @Builder
   record RetrievedContext(String prependedContext, List<AgentCitation> citations) {

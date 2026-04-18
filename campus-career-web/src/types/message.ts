@@ -37,5 +37,6 @@ export type ChatMessage = {
   status: MessageStatus
   attachments: MessageAttachment[]
   recalled?: boolean
+  recallable?: boolean
   deleted?: boolean
 }

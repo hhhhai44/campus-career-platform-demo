@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -111,17 +110,18 @@ public class ReportServiceImpl implements ReportService {
 
     Page<ReportEntity> entityPage = reportMapper.selectPage(pageParam, wrapper);
     List<ReportEntity> records = entityPage.getRecords();
+    if ((entityPage.getTotal() <= 0) && records != null && !records.isEmpty()) {
+      Long count = reportMapper.selectCount(wrapper);
+      entityPage.setTotal(count == null ? 0 : count);
+    }
     if (records == null || records.isEmpty()) {
-      return new Page<>(page, size);
+      return new Page<>(page, size, entityPage.getTotal());
     }
 
     Map<Long, String> userNameMap = buildUserNameMap(records);
-    List<ReportListVO> voList = records.stream().map(item -> {
-      ReportListVO vo = new ReportListVO();
-      BeanUtils.copyProperties(item, vo);
-      fillReadableFields(vo, userNameMap);
-      return vo;
-    }).collect(Collectors.toList());
+    List<ReportListVO> voList = records.stream()
+        .map(item -> toListVO(item, userNameMap))
+        .collect(Collectors.toList());
 
     Page<ReportListVO> result = new Page<>(page, size, entityPage.getTotal());
     result.setRecords(voList);
@@ -135,11 +135,8 @@ public class ReportServiceImpl implements ReportService {
     if (entity == null) {
       throw new BusinessException(ErrorCode.REPORT_NOT_FOUND);
     }
-    ReportDetailVO vo = new ReportDetailVO();
-    BeanUtils.copyProperties(entity, vo);
     Map<Long, String> names = loadNames(entity.getReporterId(), entity.getBizOwnerId(), entity.getHandlerId());
-    fillReadableFields(vo, names);
-    return vo;
+    return toDetailVO(entity, names);
   }
 
   @Override
@@ -216,14 +213,37 @@ public class ReportServiceImpl implements ReportService {
     return StringUtils.hasText(text) ? text.trim() : "";
   }
 
-  private void fillReadableFields(ReportListVO vo, Map<Long, String> userNameMap) {
-    vo.setBizTypeDesc(ReportBizTypeEnum.getDescByCode(vo.getBizType()));
-    vo.setStatusDesc(ReportStatusEnum.getDescByCode(vo.getStatus()));
-    vo.setReporterName(userNameMap.getOrDefault(vo.getReporterId(), "未知用户"));
-    vo.setBizOwnerName(userNameMap.getOrDefault(vo.getBizOwnerId(), "未知用户"));
-    if (vo.getHandlerId() != null) {
-      vo.setHandlerName(userNameMap.getOrDefault(vo.getHandlerId(), "未知用户"));
-    }
+  private ReportListVO toListVO(ReportEntity entity, Map<Long, String> userNameMap) {
+    ReportListVO vo = new ReportListVO();
+    vo.setId(entity.getId());
+    vo.setBizType(entity.getBizType());
+    vo.setBizTypeDesc(ReportBizTypeEnum.getDescByCode(entity.getBizType()));
+    vo.setBizTitle(entity.getBizTitle());
+    vo.setBizOwnerName(userNameMap.getOrDefault(entity.getBizOwnerId(), "未知用户"));
+    vo.setReporterName(userNameMap.getOrDefault(entity.getReporterId(), "未知用户"));
+    vo.setReason(entity.getReason());
+    vo.setStatus(entity.getStatus());
+    vo.setStatusDesc(ReportStatusEnum.getDescByCode(entity.getStatus()));
+    vo.setCreateTime(entity.getCreateTime());
+    return vo;
+  }
+
+  private ReportDetailVO toDetailVO(ReportEntity entity, Map<Long, String> userNameMap) {
+    ReportDetailVO vo = new ReportDetailVO();
+    vo.setId(entity.getId());
+    vo.setBizType(entity.getBizType());
+    vo.setBizTypeDesc(ReportBizTypeEnum.getDescByCode(entity.getBizType()));
+    vo.setBizTitle(entity.getBizTitle());
+    vo.setBizOwnerName(userNameMap.getOrDefault(entity.getBizOwnerId(), "未知用户"));
+    vo.setReporterName(userNameMap.getOrDefault(entity.getReporterId(), "未知用户"));
+    vo.setReason(entity.getReason());
+    vo.setStatus(entity.getStatus());
+    vo.setStatusDesc(ReportStatusEnum.getDescByCode(entity.getStatus()));
+    vo.setCreateTime(entity.getCreateTime());
+    vo.setBizSnippet(entity.getBizSnippet());
+    vo.setDetail(entity.getDetail());
+    vo.setHandleRemark(entity.getHandleRemark());
+    return vo;
   }
 
   private Map<Long, String> buildUserNameMap(List<ReportEntity> records) {

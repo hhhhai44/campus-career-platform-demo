@@ -1,7 +1,6 @@
 package com.hhhhai.ccpd.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hhhhai.ccpd.entity.forum.PostEntity;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
@@ -37,14 +36,16 @@ public interface PostMapper extends BaseMapper<PostEntity> {
           + "<if test='categoryId != null'> AND category_id = #{categoryId}</if>"
           + "<if test='status != null'> AND status = #{status}</if>"
           + "<if test='deleted != null'> AND deleted = #{deleted}</if>"
-          + "ORDER BY is_top DESC, create_time DESC"
+          + "ORDER BY is_top DESC, create_time DESC "
+          + "LIMIT #{limit} OFFSET #{offset}"
           + "</script>")
   List<PostEntity> selectAdminPage(
-      Page<PostEntity> page,
       @Param("keyword") String keyword,
       @Param("categoryId") Long categoryId,
       @Param("status") Integer status,
-      @Param("deleted") Integer deleted);
+      @Param("deleted") Integer deleted,
+      @Param("offset") Long offset,
+      @Param("limit") Long limit);
 
   @Select(
       "<script>"

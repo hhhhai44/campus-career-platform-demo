@@ -8,6 +8,7 @@ import com.hhhhai.ccpd.common.enums.ContentStatusEnum;
 import com.hhhhai.ccpd.common.enums.ErrorCode;
 import com.hhhhai.ccpd.common.enums.LogicDeleteEnum;
 import com.hhhhai.ccpd.common.enums.ResourceCategoryEnum;
+import com.hhhhai.ccpd.common.enums.TimeRangeEnum;
 import com.hhhhai.ccpd.dto.resource.ResourceUploadDTO;
 import com.hhhhai.ccpd.entity.resource.ResourceCategoryEntity;
 import com.hhhhai.ccpd.entity.resource.ResourceCommentEntity;
@@ -31,6 +32,7 @@ import com.hhhhai.ccpd.vo.resource.ResourceDetailVO;
 import com.hhhhai.ccpd.vo.resource.ResourceListItemVO;
 import jakarta.annotation.Resource;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,15 +79,14 @@ public class ResourceServiceImpl implements ResourceService {
     ResourceEntity entity = new ResourceEntity();
     entity.setTitle(dto.getTitle());
     entity.setDescription(dto.getDescription());
+    entity.setContent(dto.getContent());
     entity.setCategoryId(dto.getCategoryId());
     entity.setUploaderId(user.getUserId());
-    entity.setFileUrl(dto.getFileUrl());
     entity.setTags(dto.getTags());
     entity.setScoreAvg(BigDecimal.ZERO);
     entity.setScoreCount(0);
     entity.setLikeCount(0);
     entity.setFavoriteCount(0);
-    entity.setDownloadCount(0);
     entity.setStatus(ContentStatusEnum.NORMAL);
     entity.setDeleted(LogicDeleteEnum.NOT_DELETED);
 
@@ -94,8 +95,10 @@ public class ResourceServiceImpl implements ResourceService {
   }
 
   @Override
-  public Page<ResourceListItemVO> pageList(Long page, Long size, String keyword, Long categoryId) {
+  public Page<ResourceListItemVO> pageList(Long page, Long size, String keyword, Long categoryId,
+      String timeRange) {
     Page<ResourceEntity> pageParam = new Page<>(page, size);
+    LocalDateTime startTime = TimeRangeEnum.fromCode(timeRange).resolveStartTime();
 
     LambdaQueryWrapper<ResourceEntity> wrapper = new LambdaQueryWrapper<>();
     wrapper.eq(ResourceEntity::getStatus, ContentStatusEnum.NORMAL)
@@ -109,6 +112,9 @@ public class ResourceServiceImpl implements ResourceService {
     }
     if (categoryId != null) {
       wrapper.eq(ResourceEntity::getCategoryId, categoryId);
+    }
+    if (startTime != null) {
+      wrapper.ge(ResourceEntity::getCreateTime, startTime);
     }
     wrapper.orderByDesc(ResourceEntity::getCreateTime);
 
@@ -151,9 +157,59 @@ public class ResourceServiceImpl implements ResourceService {
                   }
                   vo.setCategoryName(categoryName);
                   vo.setUploaderName(uploaderNameMap.getOrDefault(entity.getUploaderId(), "未知用户"));
+                  vo.setContentPreview(buildContentPreview(entity.getContent(), entity.getDescription()));
                   vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
                   return vo;
                 })
+            .collect(Collectors.toList());
+
+    Page<ResourceListItemVO> result = new Page<>(page, size, entityPage.getTotal());
+    result.setRecords(voList);
+    return result;
+  }
+
+  @Override
+  public Page<ResourceListItemVO> pageMyResources(Long page, Long size) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    Page<ResourceEntity> pageParam = new Page<>(page, size);
+    LambdaQueryWrapper<ResourceEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(ResourceEntity::getUploaderId, user.getUserId())
+        .eq(ResourceEntity::getDeleted, LogicDeleteEnum.NOT_DELETED)
+        .orderByDesc(ResourceEntity::getCreateTime);
+
+    Page<ResourceEntity> entityPage = resourceMapper.selectPage(pageParam, wrapper);
+    List<ResourceEntity> records = entityPage.getRecords();
+    if (records == null || records.isEmpty()) {
+      return new Page<>(page, size, entityPage.getTotal());
+    }
+
+    Map<Long, Long> commentCountMap = loadResourceCommentCountMap(records);
+
+    List<Long> categoryIds =
+        records.stream().map(ResourceEntity::getCategoryId).distinct().collect(Collectors.toList());
+    Map<Long, String> categoryNameMap =
+        resourceCategoryMapper.selectBatchIds(categoryIds).stream()
+            .collect(Collectors.toMap(ResourceCategoryEntity::getId, ResourceCategoryEntity::getName));
+
+    List<ResourceListItemVO> voList =
+        records.stream()
+            .map(entity -> {
+              ResourceListItemVO vo = new ResourceListItemVO();
+              BeanUtils.copyProperties(entity, vo);
+              String categoryName = categoryNameMap.get(entity.getCategoryId());
+              if (categoryName == null && entity.getCategoryId() != null) {
+                categoryName = ResourceCategoryEnum.getDescByCode(entity.getCategoryId().intValue());
+              }
+              vo.setCategoryName(categoryName);
+              vo.setUploaderName(StringUtils.hasText(user.getUsername()) ? user.getUsername() : "我");
+              vo.setContentPreview(buildContentPreview(entity.getContent(), entity.getDescription()));
+              vo.setCommentCount(commentCountMap.getOrDefault(entity.getId(), 0L).intValue());
+              return vo;
+            })
             .collect(Collectors.toList());
 
     Page<ResourceListItemVO> result = new Page<>(page, size, entityPage.getTotal());
@@ -187,6 +243,8 @@ public class ResourceServiceImpl implements ResourceService {
         vo.setUploaderName("未知用户");
       }
     }
+
+    vo.setContent(entity.getContent());
 
     vo.setLiked(false);
     vo.setFavorited(false);
@@ -287,17 +345,6 @@ public class ResourceServiceImpl implements ResourceService {
     return new FavoriteToggleVO(favorited);
   }
 
-  @Override
-  @Transactional
-  public String getDownloadUrlAndIncreaseCount(Long resourceId) {
-    ResourceEntity resource = resourceMapper.selectById(resourceId);
-    if (resource == null || resource.getDeleted() == LogicDeleteEnum.DELETED) {
-      throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
-    }
-    resourceMapper.incrementDownloadCount(resourceId);
-    return resource.getFileUrl();
-  }
-
   private Map<Long, Long> loadResourceCommentCountMap(List<ResourceEntity> resources) {
     List<Long> resourceIds = resources.stream().map(ResourceEntity::getId).collect(Collectors.toList());
     if (resourceIds.isEmpty()) {
@@ -309,5 +356,14 @@ public class ResourceServiceImpl implements ResourceService {
                 .eq(ResourceCommentEntity::getStatus, ContentStatusEnum.NORMAL))
         .stream()
         .collect(Collectors.groupingBy(ResourceCommentEntity::getResourceId, Collectors.counting()));
+  }
+
+  private String buildContentPreview(String content, String description) {
+    String source = StringUtils.hasText(content) ? content : description;
+    if (!StringUtils.hasText(source)) {
+      return null;
+    }
+    String normalized = source.replaceAll("\\s+", " ").trim();
+    return normalized.length() <= 120 ? normalized : normalized.substring(0, 120) + "...";
   }
 }

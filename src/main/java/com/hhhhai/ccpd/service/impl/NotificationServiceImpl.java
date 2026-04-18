@@ -179,29 +179,15 @@ public class NotificationServiceImpl implements NotificationService {
                 entity -> {
                   NotificationVO vo = new NotificationVO();
                   vo.setId(entity.getId());
-                  vo.setFromUserId(entity.getFromUserId());
-                  vo.setBizId(entity.getBizId());
                   vo.setTitle(entity.getTitle());
                   vo.setContent(entity.getContent());
                   vo.setCreateTime(entity.getCreateTime());
-                  vo.setFromUserName(null);
                   if (entity.getType() != null) {
-                    vo.setType(entity.getType().getCode());
                     String typeDesc = entity.getType().getDescription();
                     vo.setTypeDesc(typeDesc);
-                    vo.setTypeName(typeDesc);
-                  }
-                  if (entity.getBizType() != null) {
-                    vo.setBizType(entity.getBizType().getCode());
-                    String bizTypeDesc = entity.getBizType().getDescription();
-                    vo.setBizTypeDesc(bizTypeDesc);
-                    vo.setBizTypeName(bizTypeDesc);
                   }
                   if (entity.getIsRead() != null) {
                     vo.setIsRead(entity.getIsRead().getCode());
-                    String isReadDesc = entity.getIsRead().getDescription();
-                    vo.setIsReadDesc(isReadDesc);
-                    vo.setIsReadName(isReadDesc);
                   }
                   return vo;
                 })

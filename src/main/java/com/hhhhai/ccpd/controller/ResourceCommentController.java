@@ -44,6 +44,13 @@ public class ResourceCommentController {
     return Result.success(result);
   }
 
+  @GetMapping("/my")
+  public Result<Page<ResourceCommentVO>> myComments(
+      @RequestParam(defaultValue = "1") Long page,
+      @RequestParam(defaultValue = "10") Long size) {
+    return Result.success(resourceCommentService.pageMyComments(page, size));
+  }
+
   @DeleteMapping("/{id}")
   public Result<Void> delete(@PathVariable("id") Long id) {
     resourceCommentService.deleteComment(id);

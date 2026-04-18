@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onActivated, onMounted, ref } from 'vue'
+import { defineAsyncComponent, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { categoryApi, type CategoryItem } from '@/api/category'
 import { postApi, type PageResult, type PostListItem } from '@/api/post'
+import { TIME_RANGE_OPTIONS, buildTimeRangeQuery, normalizeTimeRange, type TimeRangeKey } from '@/utils/timeRange'
 
 const PostCard = defineAsyncComponent(() => import('@/components/PostCard.vue'))
+
+const route = useRoute()
+const router = useRouter()
 
 const posts = ref<PostListItem[]>([])
 const categories = ref<CategoryItem[]>([])
@@ -12,6 +17,7 @@ const loadingCategory = ref(false)
 
 const keyword = ref('')
 const activeCategoryId = ref<number | null>(null)
+const activeTimeRange = ref<TimeRangeKey>(normalizeTimeRange(route.query.timeRange))
 
 const page = ref(1)
 const size = ref(10)
@@ -45,6 +51,7 @@ async function fetchPosts() {
       size: size.value,
       keyword: keyword.value || null,
       categoryId: activeCategoryId.value,
+      timeRange: activeTimeRange.value === 'all' ? null : activeTimeRange.value,
     })
     if (requestSeq !== postRequestSeq) return
     posts.value = resp.records
@@ -55,6 +62,24 @@ async function fetchPosts() {
       loading.value = false
     }
   }
+}
+
+function syncTimeRangeToRoute(timeRange: TimeRangeKey) {
+  const query = { ...route.query } as Record<string, string | number | (string | number)[]>
+  if (timeRange === 'all') {
+    delete query.timeRange
+  } else {
+    Object.assign(query, buildTimeRangeQuery(timeRange))
+  }
+  void router.replace({ name: 'forum-list', query })
+}
+
+function onTimeRangeChange(timeRange: TimeRangeKey) {
+  if (activeTimeRange.value === timeRange) return
+  activeTimeRange.value = timeRange
+  page.value = 1
+  fetchPosts()
+  syncTimeRangeToRoute(timeRange)
 }
 
 function onSearch() {
@@ -74,6 +99,7 @@ function handlePageChange(p: number) {
 }
 
 onMounted(() => {
+  activeTimeRange.value = normalizeTimeRange(route.query.timeRange)
   fetchCategories()
   fetchPosts()
 })
@@ -83,6 +109,17 @@ onActivated(() => {
     fetchPosts()
   }
 })
+
+watch(
+  () => route.query.timeRange,
+  (value) => {
+    const next = normalizeTimeRange(value)
+    if (next === activeTimeRange.value) return
+    activeTimeRange.value = next
+    page.value = 1
+    fetchPosts()
+  },
+)
 </script>
 
 <template>
@@ -107,6 +144,20 @@ onActivated(() => {
           <el-button type="primary" @click="onSearch">找找看</el-button>
         </template>
       </el-input>
+    </div>
+
+    <div class="time-filters ccp-card">
+      <span class="time-filter-label">时间范围</span>
+      <button
+        v-for="option in TIME_RANGE_OPTIONS"
+        :key="option.value"
+        class="time-chip"
+        :class="{ active: activeTimeRange === option.value }"
+        type="button"
+        @click="onTimeRangeChange(option.value)"
+      >
+        {{ option.label }}
+      </button>
     </div>
 
     <div class="categories ccp-card">
@@ -165,12 +216,6 @@ onActivated(() => {
   margin-bottom: 4px;
 }
 
-.title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .title {
   font-size: 24px;
   font-weight: var(--ccp-title-weight);
@@ -188,6 +233,43 @@ onActivated(() => {
   display: flex;
   padding: 16px;
   gap: 10px;
+}
+
+.time-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+  align-items: center;
+}
+
+.time-filter-label {
+  font-size: 12px;
+  color: var(--ccp-text-light);
+  margin-right: 4px;
+}
+
+.time-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(248, 249, 250, 0.95);
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--ccp-text-secondary);
+  cursor: pointer;
+  transition: all var(--ccp-fast);
+}
+
+.time-chip.active {
+  background: var(--ccp-primary-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(42, 92, 255, 0.18);
+}
+
+.time-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(74, 111, 255, 0.24);
 }
 
 .search-input {

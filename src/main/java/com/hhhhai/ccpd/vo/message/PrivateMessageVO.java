@@ -13,10 +13,10 @@ public class PrivateMessageVO {
   private String toUsername;
   private String content;
   private Integer isRead;
-  private String isReadDesc;
   private LocalDateTime createTime;
   private Boolean mine;
   private Boolean recalled;
+  private Boolean recallable;
 }
 
 

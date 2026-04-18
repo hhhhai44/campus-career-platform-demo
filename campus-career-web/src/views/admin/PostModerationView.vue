@@ -9,6 +9,7 @@ const records = ref<PostListItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const fetchSeq = ref(0)
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const currentDetail = ref<PostDetail | null>(null)
@@ -76,18 +77,24 @@ function buildParams() {
 }
 
 async function fetchPosts() {
+  const seq = ++fetchSeq.value
   loading.value = true
   try {
     const result = await postApi.adminPage(buildParams())
+    if (seq !== fetchSeq.value) return
     records.value = result.records ?? []
-    total.value = result.total ?? 0
+    const nextTotal = Number(result.total ?? 0)
+    total.value = Number.isFinite(nextTotal) ? nextTotal : 0
   } catch (error) {
+    if (seq !== fetchSeq.value) return
     records.value = []
     total.value = 0
     ElMessage.error('管理员帖子列表加载失败')
     console.error(error)
   } finally {
-    loading.value = false
+    if (seq === fetchSeq.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -281,8 +288,8 @@ onMounted(() => {
 
       <div class="pagination">
         <el-pagination
-          :current-page="page"
-          :page-size="pageSize"
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="total"

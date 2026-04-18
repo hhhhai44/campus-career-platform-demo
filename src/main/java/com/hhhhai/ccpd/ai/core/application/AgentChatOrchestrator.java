@@ -1,13 +1,16 @@
 package com.hhhhai.ccpd.ai.core.application;
 
 import com.hhhhai.ccpd.ai.core.port.AiTelemetry;
+import com.hhhhai.ccpd.ai.core.port.AnswerFusionService;
 import com.hhhhai.ccpd.ai.core.port.AuditService;
 import com.hhhhai.ccpd.ai.core.port.KnowledgeRetriever;
 import com.hhhhai.ccpd.ai.core.port.LlmClient;
 import com.hhhhai.ccpd.ai.core.port.MemoryStore;
+import com.hhhhai.ccpd.ai.core.port.QuestionTypeSummarizer;
 import com.hhhhai.ccpd.ai.core.port.ToolExecutor;
 import com.hhhhai.ccpd.ai.core.protocol.AgentChatRequest;
 import com.hhhhai.ccpd.ai.core.protocol.AgentChatResponse;
+import com.hhhhai.ccpd.ai.core.protocol.AgentCitation;
 import com.hhhhai.ccpd.ai.core.protocol.AgentMessage;
 import com.hhhhai.ccpd.ai.core.protocol.AgentMessageRole;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,8 @@ public class AgentChatOrchestrator {
   private final LlmClient llmClient;
   private final ObjectProvider<MemoryStore> memoryStoreProvider;
   private final ObjectProvider<KnowledgeRetriever> knowledgeRetrieverProvider;
+  private final ObjectProvider<QuestionTypeSummarizer> questionTypeSummarizerProvider;
+  private final ObjectProvider<AnswerFusionService> answerFusionServiceProvider;
   private final ObjectProvider<ToolExecutor> toolExecutorProvider;
   private final ObjectProvider<AuditService> auditServiceProvider;
   private final ObjectProvider<AiTelemetry> telemetryProvider;
@@ -82,6 +87,10 @@ public class AgentChatOrchestrator {
   private AgentChatRequest enrichRequest(AgentChatRequest request) {
     MemoryStore memoryStore = memoryStoreProvider.getIfAvailable(() -> MemoryStore.NO_OP);
     KnowledgeRetriever retriever = knowledgeRetrieverProvider.getIfAvailable(() -> KnowledgeRetriever.NO_OP);
+    QuestionTypeSummarizer summarizer =
+        questionTypeSummarizerProvider.getIfAvailable(() -> QuestionTypeSummarizer.NO_OP);
+    AnswerFusionService fusionService =
+        answerFusionServiceProvider.getIfAvailable(() -> AnswerFusionService.NO_OP);
     ToolExecutor toolExecutor = toolExecutorProvider.getIfAvailable(() -> ToolExecutor.NO_OP);
 
     List<AgentMessage> mergedMessages = new ArrayList<>();
@@ -90,7 +99,18 @@ public class AgentChatOrchestrator {
     }
     mergedMessages.addAll(safeMessages(request));
 
-    KnowledgeRetriever.RetrievedContext context = retriever.retrieve(request);
+    String normalizedQuestion = extractLatestUserQuestion(request);
+    QuestionTypeSummarizer.QuestionTypeSummary summary = summarizer.summarize(request, normalizedQuestion);
+    KnowledgeRetriever.RetrievedContext context = retriever.retrieve(request, normalizedQuestion, summary);
+    if (context == null) {
+      context = KnowledgeRetriever.RetrievedContext.builder().build();
+    }
+
+    String fusedQuestion = fusionService.fuse(request, normalizedQuestion, summary, context);
+    if (StringUtils.hasText(fusedQuestion)) {
+      replaceLastUserMessageContent(mergedMessages, fusedQuestion);
+    }
+
     if (StringUtils.hasText(context.safeContext())) {
       mergedMessages.add(0, AgentMessage.builder()
           .role(AgentMessageRole.SYSTEM)
@@ -103,6 +123,9 @@ public class AgentChatOrchestrator {
       metadata.putAll(request.getMetadata());
     }
     metadata.put("toolContext", toolExecutor.buildToolContext(request));
+    metadata.put("questionCategory", summary.safeCategory());
+    metadata.put("questionCategoryReason", summary.safeReason());
+    metadata.put("citations", context.safeCitations().stream().map(AgentCitation::sourceId).toList());
 
     return AgentChatRequest.builder()
         .model(request.getModel())
@@ -130,6 +153,34 @@ public class AgentChatOrchestrator {
       return Collections.emptyList();
     }
     return request.getMessages();
+  }
+
+  private String extractLatestUserQuestion(AgentChatRequest request) {
+    List<AgentMessage> messages = safeMessages(request);
+    for (int i = messages.size() - 1; i >= 0; i--) {
+      AgentMessage message = messages.get(i);
+      if (message != null
+          && message.role() == AgentMessageRole.USER
+          && StringUtils.hasText(message.content())) {
+        return message.content().trim();
+      }
+    }
+    return "";
+  }
+
+  private void replaceLastUserMessageContent(List<AgentMessage> messages, String question) {
+    for (int i = messages.size() - 1; i >= 0; i--) {
+      AgentMessage message = messages.get(i);
+      if (message != null
+          && message.role() == AgentMessageRole.USER
+          && StringUtils.hasText(message.content())) {
+        messages.set(i, AgentMessage.builder()
+            .role(AgentMessageRole.USER)
+            .content(question)
+            .build());
+        return;
+      }
+    }
   }
 
   private long elapsedMs(Instant start) {

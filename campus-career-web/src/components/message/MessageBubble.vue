@@ -43,7 +43,7 @@ async function copyMessage() {
       <div class="author" v-if="!message.mine">{{ message.fromUsername }}</div>
       <div class="bubble" :class="{ mine: message.mine }">
         <div v-if="message.deleted" class="placeholder">消息已删除</div>
-        <div v-else-if="message.recalled" class="placeholder">你撤回了一条消息</div>
+        <div v-else-if="message.recalled" class="placeholder">{{ message.content || '消息已撤回' }}</div>
         <template v-else>
           <div class="text">{{ message.content }}</div>
           <div v-if="message.attachments.length" class="attachments">
@@ -75,7 +75,7 @@ async function copyMessage() {
       <div class="actions">
         <el-button text size="small" @click="copyMessage">复制</el-button>
         <el-button
-          v-if="message.mine && !message.recalled && !message.deleted && message.status !== 'sending'"
+          v-if="message.mine && message.recallable && !message.recalled && !message.deleted && message.status !== 'sending'"
           text
           size="small"
           @click="emit('recall', message)"

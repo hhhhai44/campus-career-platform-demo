@@ -164,6 +164,59 @@ public class ResourceCommentServiceImpl implements ResourceCommentService {
   }
 
   @Override
+  public Page<ResourceCommentVO> pageMyComments(Long page, Long size) {
+    UserContext user = UserContextHolder.getUser();
+    if (user == null || user.getUserId() == null) {
+      throw new BusinessException(ErrorCode.NOT_LOGIN);
+    }
+
+    Page<ResourceCommentEntity> pageParam = new Page<>(page, size);
+    LambdaQueryWrapper<ResourceCommentEntity> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(ResourceCommentEntity::getFromUserId, user.getUserId())
+        .eq(ResourceCommentEntity::getStatus, ContentStatusEnum.NORMAL)
+        .orderByDesc(ResourceCommentEntity::getCreateTime);
+
+    Page<ResourceCommentEntity> entityPage = resourceCommentMapper.selectPage(pageParam, wrapper);
+    List<ResourceCommentEntity> records = entityPage.getRecords();
+    if (records == null || records.isEmpty()) {
+      return new Page<>(page, size, entityPage.getTotal());
+    }
+
+    Set<Long> userIds = records.stream().map(ResourceCommentEntity::getFromUserId)
+        .collect(Collectors.toSet());
+    userIds.addAll(records.stream().map(ResourceCommentEntity::getToUserId).filter(id -> id != null)
+        .collect(Collectors.toSet()));
+
+    final Map<Long, String> userNameMap;
+    if (!userIds.isEmpty()) {
+      List<UserEntity> users = userMapper.selectBatchIds(new ArrayList<>(userIds));
+      userNameMap = users.stream().collect(Collectors.toMap(
+          UserEntity::getId,
+          u -> u.getRealName() != null && !u.getRealName().trim().isEmpty()
+              ? u.getRealName() : u.getUsername()));
+    } else {
+      userNameMap = new HashMap<>();
+    }
+
+    Set<Long> likedCommentIds = loadLikedCommentIds(records, List.of());
+    List<ResourceCommentVO> voList = records.stream().map(entity -> {
+      ResourceCommentVO vo = new ResourceCommentVO();
+      BeanUtils.copyProperties(entity, vo);
+      vo.setFromUserName(userNameMap.getOrDefault(entity.getFromUserId(), "未知用户"));
+      if (entity.getToUserId() != null) {
+        vo.setToUserName(userNameMap.getOrDefault(entity.getToUserId(), "未知用户"));
+      }
+      vo.setLiked(likedCommentIds.contains(entity.getId()));
+      vo.setChildren(new ArrayList<>());
+      return vo;
+    }).collect(Collectors.toList());
+
+    Page<ResourceCommentVO> result = new Page<>(page, size, entityPage.getTotal());
+    result.setRecords(voList);
+    return result;
+  }
+
+  @Override
   @Transactional
   public void deleteComment(Long commentId) {
     UserContext user = UserContextHolder.getUser();

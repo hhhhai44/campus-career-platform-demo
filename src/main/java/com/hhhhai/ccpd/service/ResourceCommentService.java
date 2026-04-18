@@ -14,6 +14,8 @@ public interface ResourceCommentService {
 
   Page<ResourceCommentVO> pageComments(Long resourceId, Long page, Long size);
 
+  Page<ResourceCommentVO> pageMyComments(Long page, Long size);
+
   void deleteComment(Long commentId);
 
   LikeToggleVO toggleLike(Long commentId);

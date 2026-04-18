@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { postApi, type PostListItem } from '@/api/post'
 import { resourceApi, type ResourceListItem } from '@/api/resource'
 import { commentApi, type PostComment } from '@/api/comment'
@@ -9,7 +8,6 @@ import { resourceCommentApi, type ResourceComment } from '@/api/resourceComment'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
-const router = useRouter()
 const activeTab = ref('post')
 
 const postLoading = ref(false)
@@ -41,14 +39,6 @@ const avatarText = computed(() => (auth.username?.slice(0, 1) || 'U').toUpperCas
 function formatTime(value?: string | null) {
   if (!value) return '--'
   return new Date(value).toLocaleString()
-}
-
-function gotoPost(id: number) {
-  router.push({ name: 'forum-detail', params: { id } })
-}
-
-function gotoResource(id: number) {
-  router.push({ name: 'resource-detail', params: { id } })
 }
 
 async function loadMyPosts() {
@@ -132,32 +122,15 @@ onMounted(() => {
     <el-card shadow="never" class="content-card">
       <el-tabs v-model="activeTab" @tab-change="onTabChange">
         <el-tab-pane label="我的帖子" name="post">
-          <div class="card-list" v-loading="postLoading">
-            <el-card
-              v-for="item in myPosts"
-              :key="item.id"
-              class="post-card"
-              shadow="hover"
-              @click="gotoPost(item.id)"
-            >
-              <div class="post-title">{{ item.title }}</div>
-              <div class="post-meta">
-                <span class="tag">{{ item.categoryName }}</span>
-                <span class="meta-dot">·</span>
-                <span class="meta-text">{{ formatTime(item.createTime) }}</span>
-              </div>
-              <div v-if="item.summary" class="post-summary">
-                {{ item.summary }}
-              </div>
-              <div class="post-stats">
-                <span>👍 {{ item.likeCount }}</span>
-                <span>⭐ {{ item.favoriteCount }}</span>
-                <span>💬 {{ item.commentCount }}</span>
-                <span>👀 {{ item.viewCount }}</span>
-              </div>
-            </el-card>
-            <div v-if="!myPosts.length && !postLoading" class="empty-text">你还没有发布过帖子</div>
-          </div>
+          <el-table :data="myPosts" v-loading="postLoading" size="small">
+            <el-table-column prop="title" label="标题" min-width="260" show-overflow-tooltip />
+            <el-table-column prop="categoryName" label="分类" width="120" />
+            <el-table-column prop="likeCount" label="点赞" width="80" />
+            <el-table-column prop="commentCount" label="评论" width="80" />
+            <el-table-column label="发布时间" width="180">
+              <template #default="scope">{{ formatTime(scope.row.createTime) }}</template>
+            </el-table-column>
+          </el-table>
           <div class="pager" v-if="postTotal > postSize">
             <el-pagination
               v-model:current-page="postPage"
@@ -170,32 +143,15 @@ onMounted(() => {
         </el-tab-pane>
 
         <el-tab-pane label="我的资源" name="resource">
-          <div class="resource-list" v-loading="resourceLoading">
-            <el-card
-              v-for="res in myResources"
-              :key="res.id"
-              class="resource-card"
-              shadow="hover"
-              @click="gotoResource(res.id)"
-            >
-              <div class="resource-title">{{ res.title }}</div>
-              <div class="resource-meta">
-                <span class="meta-text">{{ res.categoryName }}</span>
-                <span class="meta-dot">·</span>
-                <span class="meta-text">{{ formatTime(res.createTime) }}</span>
-              </div>
-              <div v-if="res.contentPreview || res.description" class="resource-desc">
-                {{ res.contentPreview || res.description }}
-              </div>
-              <div class="resource-stats">
-                <span>⭐ {{ res.scoreAvg?.toFixed?.(1) ?? '-' }} ({{ res.scoreCount }})</span>
-                <span>👍 {{ res.likeCount }}</span>
-                <span>收藏 {{ res.favoriteCount }}</span>
-                <span>💬 {{ res.commentCount }}</span>
-              </div>
-            </el-card>
-            <div v-if="!myResources.length && !resourceLoading" class="empty-text">你还没有发布过资源</div>
-          </div>
+          <el-table :data="myResources" v-loading="resourceLoading" size="small">
+            <el-table-column prop="title" label="标题" min-width="260" show-overflow-tooltip />
+            <el-table-column prop="categoryName" label="分类" width="120" />
+            <el-table-column prop="scoreAvg" label="评分" width="90" />
+            <el-table-column prop="favoriteCount" label="收藏" width="80" />
+            <el-table-column label="发布时间" width="180">
+              <template #default="scope">{{ formatTime(scope.row.createTime) }}</template>
+            </el-table-column>
+          </el-table>
           <div class="pager" v-if="resourceTotal > resourceSize">
             <el-pagination
               v-model:current-page="resourcePage"
@@ -300,90 +256,6 @@ onMounted(() => {
   border-radius: 12px;
 }
 
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.post-card,
-.resource-card {
-  border-radius: var(--ccp-card-radius);
-  cursor: pointer;
-}
-
-.post-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.post-meta,
-.resource-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  font-size: 12px;
-  color: var(--ccp-text-muted);
-  margin-bottom: 6px;
-}
-
-.tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: var(--ccp-primary);
-}
-
-.meta-text {
-  color: var(--ccp-text-muted);
-}
-
-.meta-dot {
-  color: var(--ccp-text-light);
-}
-
-.post-summary,
-.resource-desc {
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: #4b5563;
-  line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.post-stats,
-.resource-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--ccp-text-light);
-}
-
-.resource-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.resource-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.empty-text {
-  padding: 24px 0;
-  text-align: center;
-  font-size: var(--ccp-sub-size);
-  color: var(--ccp-text-light);
-}
-
 .comment-block {
   margin-bottom: 16px;
 }
@@ -400,3 +272,4 @@ onMounted(() => {
   justify-content: flex-end;
 }
 </style>
+

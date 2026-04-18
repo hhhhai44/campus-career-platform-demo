@@ -81,17 +81,6 @@ async function fetchComments(resourceId: number) {
   }
 }
 
-async function onDownload() {
-  if (!resource.value) return
-  try {
-    const url = await resourceApi.download(resource.value.id)
-    resource.value.downloadCount = (resource.value.downloadCount || 0) + 1
-    window.open(url, '_blank', 'noopener,noreferrer')
-  } catch {
-    ElMessage.error('下载失败，稍后再试试')
-  }
-}
-
 async function onLike() {
   if (!resource.value || likeLoading.value) return
   likeLoading.value = true
@@ -206,7 +195,7 @@ function openReportDialog(bizType: ReportBizType, bizId: number, title: string) 
 function handleReportResource() {
   if (!resource.value) return
   if (resource.value.owner) {
-    ElMessage.warning('不能举报自己上传的资源')
+    ElMessage.warning('不能举报自己发布的资源文章')
     return
   }
   openReportDialog('RESOURCE', resource.value.id, resource.value.title)
@@ -266,19 +255,19 @@ const showRatingCard = computed(() => {
   <div class="detail">
     <div class="header ccp-page-header">
       <div>
-        <div class="title-page">资源详情</div>
-        <div class="sub-page">看看资源内容、评分和评论，再决定要不要下载</div>
+        <div class="title-page">资源文章</div>
+        <div class="sub-page">阅读正文、查看评分与评论，快速判断内容价值</div>
       </div>
       <div class="header-badge">
         <span class="badge-dot"></span>
-        <span>评分、收藏、下载都能即时更新</span>
+        <span>评分、收藏、评论实时同步</span>
       </div>
     </div>
 
     <el-skeleton v-if="loading" animated :rows="6" />
     <template v-else>
       <el-card v-if="resource" class="main-card" shadow="never">
-        <div class="header">
+        <div class="article-head">
           <div>
             <div class="title">{{ resource.title }}</div>
             <div class="meta">
@@ -298,37 +287,25 @@ const showRatingCard = computed(() => {
                 <span class="meta-text">{{ resource.uploaderName }}</span>
               </span>
               <span class="meta-dot">·</span>
-              <span class="meta-text">
-                {{ new Date(resource.createTime).toLocaleString() }}
-              </span>
+              <span class="meta-text">{{ new Date(resource.createTime).toLocaleString() }}</span>
             </div>
-          </div>
-          <div class="download">
-            <el-button type="primary" round @click="onDownload">下载资源</el-button>
           </div>
         </div>
 
-        <div v-if="resource.description" class="desc">
-          {{ resource.description }}
-        </div>
+        <div v-if="resource.description" class="desc">{{ resource.description }}</div>
+
+        <div class="article-content">{{ resource.content }}</div>
+
         <div v-if="resource.tags" class="tags">
-          <span v-for="tag in resource.tags.split(',')" :key="tag" class="tag">
-            {{ tag }}
-          </span>
+          <span v-for="tag in resource.tags.split(',')" :key="tag" class="tag">{{ tag }}</span>
         </div>
 
         <div class="rating-summary">
-          <div class="score">
-            <div class="score-main">
-              <span class="score-num">
-                {{ resource.scoreAvg?.toFixed?.(1) ?? '-' }}
-              </span>
-              <span class="score-unit">/ 5</span>
-            </div>
-            <div class="score-sub">
-              {{ resource.scoreCount }} 人评分 · {{ resource.downloadCount }} 次下载
-            </div>
+          <div class="score-main">
+            <span class="score-num">{{ resource.scoreAvg?.toFixed?.(1) ?? '-' }}</span>
+            <span class="score-unit">/ 5</span>
           </div>
+          <div class="score-sub">{{ resource.scoreCount }} 人评分</div>
         </div>
 
         <div class="actions">
@@ -350,26 +327,32 @@ const showRatingCard = computed(() => {
           >
             ⭐ {{ resource.favorited ? '已收藏' : '收藏' }} {{ resource.favoriteCount || 0 }}
           </el-button>
-          <el-button v-if="auth.isAuthed && !resource.owner" text type="danger" size="small" @click="handleReportResource">举报</el-button>
+          <el-button
+            v-if="auth.isAuthed && !resource.owner"
+            text
+            type="danger"
+            size="small"
+            @click="handleReportResource"
+          >
+            举报
+          </el-button>
         </div>
       </el-card>
 
       <el-card v-if="showRatingCard" class="rate-card" shadow="never">
-        <div class="rate-title">觉得这个资源怎么样？打个分吧</div>
+        <div class="rate-title">这篇资源文章对你有帮助吗？打个分吧</div>
         <el-form @submit.prevent>
           <el-form-item label="评分">
             <el-rate v-model="score" :max="5" allow-half />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="submitting" @click="submitRating">
-              提交评分
-            </el-button>
+            <el-button type="primary" :loading="submitting" @click="submitRating">提交评分</el-button>
           </el-form-item>
         </el-form>
       </el-card>
 
       <el-card class="comment-card" shadow="never">
-        <div class="comment-title">资源评论区</div>
+        <div class="comment-title">评论区</div>
         <el-form @submit.prevent>
           <el-form-item v-if="replyingTo">
             <div class="reply-hint">
@@ -382,7 +365,7 @@ const showRatingCard = computed(() => {
               v-model="commentContent"
               type="textarea"
               :rows="3"
-              :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你的使用感受，帮到更多同学'"
+              :placeholder="replyingTo ? `回复 ${replyingTo.fromUserName}...` : '写下你的阅读感受，帮助更多同学'"
             />
           </el-form-item>
           <el-form-item>
@@ -472,13 +455,15 @@ const showRatingCard = computed(() => {
   box-shadow: 0 0 0 4px rgba(74, 111, 255, 0.12);
 }
 
-.main-card {
+.main-card,
+.rate-card,
+.comment-card {
   border-radius: var(--ccp-card-radius);
   border: 1px solid var(--ccp-card-border);
   box-shadow: var(--ccp-card-shadow);
 }
 
-.header {
+.article-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -500,6 +485,10 @@ const showRatingCard = computed(() => {
 
 .meta-text {
   color: var(--ccp-text-muted);
+}
+
+.meta-dot {
+  color: #9ca3af;
 }
 
 .uploader-chip {
@@ -541,23 +530,24 @@ const showRatingCard = computed(() => {
   text-decoration: none;
 }
 
-.meta-dot {
-  color: #9ca3af;
-}
-
-.download {
-  display: flex;
-  align-items: center;
-}
-
 .desc {
   margin-top: 10px;
   font-size: 14px;
+  color: #374151;
+  line-height: 1.7;
+}
+
+.article-content {
+  margin-top: 12px;
+  font-size: 14px;
   color: #111827;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .tags {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -586,29 +576,10 @@ const showRatingCard = computed(() => {
   font-weight: 800;
 }
 
-.score-unit {
-  font-size: 13px;
-  color: #6b7280;
-}
-
+.score-unit,
 .score-sub {
   font-size: 12px;
   color: #9ca3af;
-  margin-top: 2px;
-}
-
-.rate-card,
-.comment-card {
-  border-radius: var(--ccp-card-radius);
-  border: 1px solid var(--ccp-card-border);
-  box-shadow: var(--ccp-card-shadow);
-}
-
-.rate-title,
-.comment-title {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 10px;
 }
 
 .actions {
@@ -617,17 +588,11 @@ const showRatingCard = computed(() => {
   gap: 12px;
 }
 
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.action-item:hover {
-  background: #f5f7ff;
+.rate-title,
+.comment-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 
 .reply-hint {
@@ -660,7 +625,7 @@ const showRatingCard = computed(() => {
 }
 
 @media (max-width: 640px) {
-  .header {
+  .article-head {
     flex-direction: column;
     align-items: flex-start;
   }

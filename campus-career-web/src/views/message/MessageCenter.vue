@@ -61,6 +61,7 @@ const pendingMessages = ref<ChatMessage[]>([])
 const draft = ref('')
 const attachments = ref<MessageAttachment[]>([])
 const searchText = ref('')
+const messageLoadSeq = ref(0)
 
 const conversationViews = computed<ConversationView[]>(() =>
   rawConversations.value.map((item) => toConversationView(item)),
@@ -200,28 +201,37 @@ function normalizeMessage(message: PrivateMessage): ChatMessage {
     status: message.isRead === 1 ? 'read' : 'sent',
     attachments: [],
     recalled: message.recalled ?? false,
+    recallable: message.recallable ?? false,
     deleted: false,
   }
 }
 
 async function loadMessages(peerUserId: number) {
+  const seq = ++messageLoadSeq.value
   loadingMessages.value = true
   try {
     const page = await messageApi.sessionPage(peerUserId, 1, 100)
+    if (seq !== messageLoadSeq.value || activePeerId.value !== peerUserId) return
     serverMessages.value = (page.records || []).map((item) => normalizeMessage(item))
     pendingMessages.value = pendingMessages.value.filter((item) => item.toUserId === peerUserId)
 
     await messageApi.markSessionRead(peerUserId)
+    if (seq !== messageLoadSeq.value || activePeerId.value !== peerUserId) return
     await messageStore.fetchUnreadCount({ force: true })
+    if (seq !== messageLoadSeq.value || activePeerId.value !== peerUserId) return
 
     rawConversations.value = rawConversations.value.map((item) =>
       item.peerUserId === peerUserId ? { ...item, unreadCount: 0 } : item,
     )
   } catch {
-    serverMessages.value = []
-    ElMessage.error('消息加载失败，稍后再试')
+    if (seq === messageLoadSeq.value && activePeerId.value === peerUserId) {
+      serverMessages.value = []
+      ElMessage.error('消息加载失败，稍后再试')
+    }
   } finally {
-    loadingMessages.value = false
+    if (seq === messageLoadSeq.value) {
+      loadingMessages.value = false
+    }
   }
 }
 
@@ -232,6 +242,7 @@ function openConversation(peerUserId: number) {
     return
   }
   ensureConversationVisible(peerUserId)
+  messageLoadSeq.value++
   activePeerId.value = peerUserId
   draft.value = ''
   cleanupAttachments()
@@ -274,6 +285,7 @@ function createTempMessage(content: string, files: MessageAttachment[]): ChatMes
     status: 'sending',
     attachments: files,
     recalled: false,
+    recallable: true,
     deleted: false,
   }
 }
@@ -319,7 +331,7 @@ async function handleCopyMessage(message: ChatMessage) {
 }
 
 async function handleRecallMessage(message: ChatMessage) {
-  if (!message.mine || message.deleted || String(message.id).startsWith('temp-')) return
+  if (!message.mine || !message.recallable || message.deleted || String(message.id).startsWith('temp-')) return
   try {
     await ElMessageBox.confirm('确定要撤回这条消息吗？', '撤回确认', {
       confirmButtonText: '确定',
@@ -384,6 +396,7 @@ watch(
   () => activePeerId.value,
   async (peerId) => {
     if (!peerId) {
+      messageLoadSeq.value++
       serverMessages.value = []
       pendingMessages.value = []
       return
@@ -391,12 +404,10 @@ watch(
 
     await loadMessages(peerId)
     if (String(route.query.peer || '') !== String(peerId)) {
-      const peerName = currentConversation.value?.peerUsername
       await router.replace({
         name: 'message-center',
         query: {
           peer: String(peerId),
-          ...(peerName ? { peerName } : {}),
         },
       })
     }

@@ -5,14 +5,22 @@ import { useRouter } from 'vue-router'
 import { postApi, type PostListItem } from '@/api/post'
 import { resourceApi, type ResourceListItem } from '@/api/resource'
 import { useAuthStore } from '@/stores/auth'
+import { buildTimeRangeQuery, type TimeRangeKey } from '@/utils/timeRange'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const posts = ref<PostListItem[]>([])
 const resources = ref<ResourceListItem[]>([])
+const todayPostTotal = ref(0)
+const todayResourceTotal = ref(0)
 const loadingPosts = ref(false)
 const loadingResources = ref(false)
+const loadingStats = ref(false)
+
+function gotoList(name: 'forum-list' | 'resource-list', timeRange: TimeRangeKey) {
+  router.push({ name, query: buildTimeRangeQuery(timeRange) })
+}
 
 async function fetchPosts() {
   loadingPosts.value = true
@@ -37,6 +45,23 @@ async function fetchResources() {
     ElMessage.error('资源加载失败，稍后再试试')
   } finally {
     loadingResources.value = false
+  }
+}
+
+async function fetchTodayStats() {
+  loadingStats.value = true
+  try {
+    const [postPage, resourcePage] = await Promise.all([
+      postApi.page({ page: 1, size: 1, timeRange: 'today' }),
+      resourceApi.page({ page: 1, size: 1, timeRange: 'today' }),
+    ])
+    todayPostTotal.value = postPage.total
+    todayResourceTotal.value = resourcePage.total
+  } catch {
+    todayPostTotal.value = 0
+    todayResourceTotal.value = 0
+  } finally {
+    loadingStats.value = false
   }
 }
 
@@ -69,8 +94,9 @@ function gotoResource(id: number) {
 }
 
 onMounted(() => {
-  fetchPosts()
-  fetchResources()
+  void fetchPosts()
+  void fetchResources()
+  void fetchTodayStats()
 })
 </script>
 
@@ -91,14 +117,14 @@ onMounted(() => {
         <el-card class="hero-card" shadow="hover">
           <div class="hero-stat-title">今日校园动态</div>
           <div class="hero-stat-grid">
-            <div class="stat-item">
-              <div class="stat-value">{{ posts.length }}</div>
-              <div class="stat-label">新帖子</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">{{ resources.length }}</div>
-              <div class="stat-label">新资源</div>
-            </div>
+            <button class="stat-item" type="button" :disabled="loadingStats" @click="gotoList('forum-list', 'today')">
+              <span class="stat-value">{{ todayPostTotal }}</span>
+              <span class="stat-label">今日新帖子</span>
+            </button>
+            <button class="stat-item" type="button" :disabled="loadingStats" @click="gotoList('resource-list', 'today')">
+              <span class="stat-value">{{ todayResourceTotal }}</span>
+              <span class="stat-label">今日新资源</span>
+            </button>
           </div>
         </el-card>
       </div>
@@ -140,10 +166,10 @@ onMounted(() => {
               {{ item.summary }}
             </div>
             <div class="post-stats">
-              <span>👍 {{ item.likeCount }}</span>
+              <span> {{ item.likeCount }}</span>
               <span>⭐ {{ item.favoriteCount }}</span>
-              <span>💬 {{ item.commentCount }}</span>
-              <span>👀 {{ item.viewCount }}</span>
+              <span> {{ item.commentCount }}</span>
+              <span> {{ item.viewCount }}</span>
             </div>
           </el-card>
           <div v-if="!posts.length && !loadingPosts" class="empty-text">
@@ -179,15 +205,14 @@ onMounted(() => {
               </button>
               <span v-else class="author-link author-text">{{ res.uploaderName }}</span>
             </div>
-            <div v-if="res.description" class="resource-desc">
-              {{ res.description }}
+            <div v-if="res.contentPreview || res.description" class="resource-desc">
+              {{ res.contentPreview || res.description }}
             </div>
             <div class="resource-stats">
               <span>⭐ {{ res.scoreAvg?.toFixed?.(1) ?? '-' }} ({{ res.scoreCount }})</span>
-              <span>👍 {{ res.likeCount }}</span>
+              <span> {{ res.likeCount }}</span>
               <span>收藏 {{ res.favoriteCount }}</span>
-              <span>💬 {{ res.commentCount }}</span>
-              <span>⬇️ {{ res.downloadCount }}</span>
+              <span> {{ res.commentCount }}</span>
             </div>
           </el-card>
           <div v-if="!resources.length && !loadingResources" class="empty-text">
@@ -261,17 +286,33 @@ onMounted(() => {
 }
 
 .stat-item {
+  border: 0;
+  text-align: left;
   padding: 10px 12px;
   border-radius: 12px;
   background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stat-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #eef4ff;
+}
+
+.stat-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .stat-value {
+  display: block;
   font-size: 18px;
   font-weight: 700;
 }
 
 .stat-label {
+  display: block;
   font-size: 12px;
   color: var(--ccp-text-muted);
 }

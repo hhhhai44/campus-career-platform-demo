@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { notificationApi, type Notification } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 
@@ -13,12 +13,6 @@ const markAllLoading = ref(false)
 const activeFilter = ref<'all' | 'unread'>('all')
 
 const notificationStore = useNotificationStore()
-const filteredNotifications = computed(() => {
-  if (activeFilter.value === 'unread') {
-    return notifications.value.filter((item) => item.isRead === 0)
-  }
-  return notifications.value
-})
 
 async function fetchNotifications() {
   loading.value = true
@@ -26,6 +20,7 @@ async function fetchNotifications() {
     const resp = await notificationApi.page({
       page: current.value,
       size: size.value,
+      isRead: activeFilter.value === 'unread' ? 0 : null,
     })
     notifications.value = resp.records
     total.value = resp.total
@@ -76,6 +71,11 @@ onMounted(() => {
   fetchNotifications()
   notificationStore.fetchUnreadCount()
 })
+
+watch(activeFilter, () => {
+  current.value = 1
+  void fetchNotifications()
+})
 </script>
 
 <template>
@@ -99,11 +99,11 @@ onMounted(() => {
     <el-card shadow="never" class="list-card ccp-card">
       <el-skeleton v-if="loading" :rows="6" animated />
 
-      <div v-else-if="!filteredNotifications.length" class="empty">暂时没有通知，去逛逛论坛吧</div>
+      <div v-else-if="!notifications.length" class="empty">暂时没有通知，去逛逛论坛吧</div>
 
       <div v-else class="list">
         <div
-          v-for="item in filteredNotifications"
+          v-for="item in notifications"
           :key="item.id"
           class="list-item"
           :class="{ unread: item.isRead === 0 }"
@@ -117,7 +117,7 @@ onMounted(() => {
             </div>
             <div class="content">{{ item.content }}</div>
             <div class="meta">
-              <span>{{ item.typeDesc || item.typeName || '社区提醒' }}</span>
+              <span>{{ item.typeDesc || '社区提醒' }}</span>
               <span>·</span>
               <span>{{ formatTime(item.createTime) }}</span>
             </div>

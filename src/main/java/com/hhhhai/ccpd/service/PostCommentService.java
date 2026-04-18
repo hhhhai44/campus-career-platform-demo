@@ -23,6 +23,11 @@ public interface PostCommentService {
   Page<PostCommentVO> pageComments(Long postId, Long page, Long size);
 
   /**
+   * 当前用户发过的评论分页
+   */
+  Page<PostCommentVO> pageMyComments(Long page, Long size);
+
+  /**
    * 删除评论
    */
   void deleteComment(Long commentId);

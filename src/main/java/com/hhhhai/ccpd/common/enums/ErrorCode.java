@@ -33,6 +33,9 @@ public enum ErrorCode {
   REPORT_INVALID(40002, "举报信息不完整"),
   REPORT_HANDLED(40003, "举报已处理"),
 
+  // 私信相关
+  MESSAGE_RECALL_TIMEOUT(40004, "消息发送超过2分钟，无法撤回"),
+
   // 用户管理相关
   USER_STATUS_INVALID(50001, "用户状态不合法");
 
